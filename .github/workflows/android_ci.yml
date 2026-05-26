@@ -30,15 +30,26 @@ jobs:
           APK_PATH=$(find . -name "*-release-unsigned.apk" | head -n 1)
           DIR_PATH=$(dirname "$APK_PATH")
           echo "apk_dir=$DIR_PATH" >> $GITHUB_OUTPUT
-      - name: Sign Android Release (APK)
-        uses: r0adkll/sign-android-release@v1
-        id: sign_app
-        with:
-          releaseDirectory: ${{ steps.find_apk.outputs.apk_dir }}
-          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
-          alias: ${{ secrets.ALIAS }}
-          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
+      - name: Sign APK Manually
+        run: |
+          # 1. Создаем файл ключа из Base64
+          echo "${{ secrets.SIGNING_KEY }}" | base64 -d > release.keystore
+          
+          # 2. Находим путь к актуальному apksigner на сервере GitHub
+          APKSIGNER=$(find $ANDROID_HOME/build-tools -name "apksigner" | sort -V | tail -n 1)
+          
+          # 3. Находим наш неподписанный APK
+          UNSIGNED_APK=$(find ./behappy/build/outputs/apk/release -name "*-release-unsigned.apk")
+          SIGNED_APK="./behappy/build/outputs/apk/release/app-release-signed.apk"
+          
+          # 4. Подписываем
+          $APKSIGNER sign --ks release.keystore \
+            --ks-key-alias "${{ secrets.ALIAS }}" \
+            --ks-pass pass:"${{ secrets.KEY_STORE_PASSWORD }}" \
+            --key-pass pass:"${{ secrets.KEY_PASSWORD }}" \
+            --out $SIGNED_APK $UNSIGNED_APK
+          
+          echo "SIGNED_APK_PATH=$SIGNED_APK" >> $GITHUB_ENV
       - name: Create GitHub Release and Upload APK
         uses: softprops/action-gh-release@v2
         with:
@@ -46,6 +57,6 @@ jobs:
           name: Release ${{ github.ref_name }}
           draft: false
           prerelease: false
-          files: ${{ steps.sign_app.outputs.signedReleaseFile }}
+          files: ${{ env.SIGNED_APK_PATH }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
