@@ -24,11 +24,17 @@ jobs:
         run: ./gradlew testReleaseUnitTest lintRelease
       - name: Build Release APK
         run: ./gradlew assembleRelease
+      - name: Find APK File
+        id: find_apk
+        run: |
+          APK_PATH=$(find . -name "*-release-unsigned.apk" | head -n 1)
+          DIR_PATH=$(dirname "$APK_PATH")
+          echo "apk_dir=$DIR_PATH" >> $GITHUB_OUTPUT
       - name: Sign Android Release (APK)
         uses: r0adkll/sign-android-release@v1
         id: sign_app
         with:
-          releaseDirectory: app/build/outputs/apk/release
+          releaseDirectory: ${{ steps.find_apk.outputs.apk_dir }}
           signingKeyBase64: ${{ secrets.SIGNING_KEY }}
           alias: ${{ secrets.ALIAS }}
           keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
