@@ -12,6 +12,7 @@ import com.google.gson.reflect.TypeToken;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class SecurePrefs {
     private static final String FILE_NAME = "secure_prefs";
@@ -22,122 +23,122 @@ public class SecurePrefs {
     private static final String KEY_PROFILES = "profiles_json";
     private static final String KEY_CURRENT_PROFILE_ID = "current_profile_id";
 
-    private final SharedPreferences prefs;
-    private final Gson gson = new Gson();
+    private final SharedPreferences encryptedStorage;
+    private final Gson jsonConverter = new Gson();
 
     public SecurePrefs(Context context) {
         try {
-            MasterKey masterKey = new MasterKey.Builder(context)
+            MasterKey securityKey = new MasterKey.Builder(context)
                     .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
                     .build();
 
-            prefs = EncryptedSharedPreferences.create(
+            encryptedStorage = EncryptedSharedPreferences.create(
                     context,
                     FILE_NAME,
-                    masterKey,
+                    securityKey,
                     EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                     EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             );
-        } catch (Exception exception) {
-            throw new IllegalStateException("Failed to initialize secure prefs", exception);
+        } catch (Exception initError) {
+            throw new IllegalStateException("Failed to initialize secure prefs", initError);
         }
     }
 
     public List<ServerProfile> getProfiles() {
-        String json = prefs.getString(KEY_PROFILES, null);
-        if (json == null) {
-            List<ServerProfile> list = new ArrayList<>();
-            String legacyHost = prefs.getString(KEY_HOST, "");
-            String legacyApi = prefs.getString(KEY_API, "");
-            boolean legacySelfSigned = prefs.getBoolean(KEY_ALLOW_SELF_SIGNED, false);
+        String profilesJson = encryptedStorage.getString(KEY_PROFILES, null);
+        if (profilesJson == null) {
+            List<ServerProfile> profilesList = new ArrayList<>();
+            String oldHost = encryptedStorage.getString(KEY_HOST, "");
+            String oldApiKey = encryptedStorage.getString(KEY_API, "");
+            boolean oldSelfSignedFlag = encryptedStorage.getBoolean(KEY_ALLOW_SELF_SIGNED, false);
             
-            if (!legacyHost.isEmpty()) {
-                ServerProfile p = new ServerProfile("Default", legacyHost, legacyApi, legacySelfSigned);
-                list.add(p);
-                saveProfiles(list);
-                saveCurrentProfileId(p.getId());
+            if (!oldHost.isEmpty()) {
+                ServerProfile legacyProfile = new ServerProfile("Default", oldHost, oldApiKey, oldSelfSignedFlag);
+                profilesList.add(legacyProfile);
+                saveProfiles(profilesList);
+                saveCurrentProfileId(legacyProfile.getId());
             }
-            return list;
+            return profilesList;
         }
-        return gson.fromJson(json, new TypeToken<List<ServerProfile>>() {}.getType());
+        return jsonConverter.fromJson(profilesJson, new TypeToken<List<ServerProfile>>() {}.getType());
     }
 
-    public void saveProfiles(List<ServerProfile> profiles) {
-        prefs.edit().putString(KEY_PROFILES, gson.toJson(profiles)).apply();
+    public void saveProfiles(List<ServerProfile> serverProfiles) {
+        encryptedStorage.edit().putString(KEY_PROFILES, jsonConverter.toJson(serverProfiles)).apply();
     }
 
     public String getCurrentProfileId() {
-        return prefs.getString(KEY_CURRENT_PROFILE_ID, "");
+        return encryptedStorage.getString(KEY_CURRENT_PROFILE_ID, "");
     }
 
-    public void saveCurrentProfileId(String id) {
-        prefs.edit().putString(KEY_CURRENT_PROFILE_ID, id).apply();
+    public void saveCurrentProfileId(String profileId) {
+        encryptedStorage.edit().putString(KEY_CURRENT_PROFILE_ID, profileId).apply();
     }
 
     public ServerProfile getCurrentProfile() {
-        List<ServerProfile> profiles = getProfiles();
-        String currentId = getCurrentProfileId();
-        for (ServerProfile p : profiles) {
-            if (p.getId().equals(currentId)) return p;
+        List<ServerProfile> serverProfiles = getProfiles();
+        String activeProfileId = getCurrentProfileId();
+        for (ServerProfile profile : serverProfiles) {
+            if (Objects.equals(profile.getId(), activeProfileId)) return profile;
         }
-        if (!profiles.isEmpty()) return profiles.get(0);
+        if (!serverProfiles.isEmpty()) return serverProfiles.get(0);
         return null;
     }
 
-    public void saveHost(String host) {
-        prefs.edit().putString(KEY_HOST, host).apply();
-        updateCurrentProfile();
+    public void saveHost(String serverHost) {
+        encryptedStorage.edit().putString(KEY_HOST, serverHost).apply();
+        refreshActiveProfile();
     }
 
     public String getHost() {
-        ServerProfile current = getCurrentProfile();
-        if (current != null) return current.getHost();
-        return prefs.getString(KEY_HOST, "");
+        ServerProfile activeProfile = getCurrentProfile();
+        if (activeProfile != null && activeProfile.getHost() != null) return activeProfile.getHost();
+        return encryptedStorage.getString(KEY_HOST, "");
     }
 
-    public void saveApiKey(String apiKey) {
-        prefs.edit().putString(KEY_API, apiKey).apply();
-        updateCurrentProfile();
+    public void saveApiKey(String apiSecret) {
+        encryptedStorage.edit().putString(KEY_API, apiSecret).apply();
+        refreshActiveProfile();
     }
 
     public String getApiKey() {
-        ServerProfile current = getCurrentProfile();
-        if (current != null) return current.getApiKey();
-        return prefs.getString(KEY_API, "");
+        ServerProfile activeProfile = getCurrentProfile();
+        if (activeProfile != null && activeProfile.getApiKey() != null) return activeProfile.getApiKey();
+        return encryptedStorage.getString(KEY_API, "");
     }
 
-    public void saveAllowSelfSigned(boolean value) {
-        prefs.edit().putBoolean(KEY_ALLOW_SELF_SIGNED, value).apply();
-        updateCurrentProfile();
+    public void saveAllowSelfSigned(boolean allowFlag) {
+        encryptedStorage.edit().putBoolean(KEY_ALLOW_SELF_SIGNED, allowFlag).apply();
+        refreshActiveProfile();
     }
 
     public boolean isAllowSelfSigned() {
-        ServerProfile current = getCurrentProfile();
-        if (current != null) return current.isAllowSelfSigned();
-        return prefs.getBoolean(KEY_ALLOW_SELF_SIGNED, false);
+        ServerProfile activeProfile = getCurrentProfile();
+        if (activeProfile != null) return activeProfile.isAllowSelfSigned();
+        return encryptedStorage.getBoolean(KEY_ALLOW_SELF_SIGNED, false);
     }
 
-    private void updateCurrentProfile() {
-        ServerProfile current = getCurrentProfile();
-        if (current == null) return;
+    private void refreshActiveProfile() {
+        ServerProfile activeProfile = getCurrentProfile();
+        if (activeProfile == null) return;
         
-        List<ServerProfile> profiles = getProfiles();
-        for (ServerProfile p : profiles) {
-            if (p.getId().equals(current.getId())) {
-                p.setHost(prefs.getString(KEY_HOST, p.getHost()));
-                p.setApiKey(prefs.getString(KEY_API, p.getApiKey()));
-                p.setAllowSelfSigned(prefs.getBoolean(KEY_ALLOW_SELF_SIGNED, p.isAllowSelfSigned()));
+        List<ServerProfile> serverProfiles = getProfiles();
+        for (ServerProfile profile : serverProfiles) {
+            if (Objects.equals(profile.getId(), activeProfile.getId())) {
+                profile.setHost(encryptedStorage.getString(KEY_HOST, profile.getHost()));
+                profile.setApiKey(encryptedStorage.getString(KEY_API, profile.getApiKey()));
+                profile.setAllowSelfSigned(encryptedStorage.getBoolean(KEY_ALLOW_SELF_SIGNED, profile.isAllowSelfSigned()));
                 break;
             }
         }
-        saveProfiles(profiles);
+        saveProfiles(serverProfiles);
     }
 
-    public void setBiometricEnabled(boolean enabled) {
-        prefs.edit().putBoolean(KEY_BIOMETRIC_ENABLED, enabled).apply();
+    public void setBiometricEnabled(boolean isEnabled) {
+        encryptedStorage.edit().putBoolean(KEY_BIOMETRIC_ENABLED, isEnabled).apply();
     }
 
     public boolean isBiometricEnabled() {
-        return prefs.getBoolean(KEY_BIOMETRIC_ENABLED, false);
+        return encryptedStorage.getBoolean(KEY_BIOMETRIC_ENABLED, false);
     }
 }

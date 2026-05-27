@@ -2,7 +2,6 @@ package com.dmitrij.behappy.ui;
 
 import android.graphics.Color;
 import android.os.Bundle;
-import android.view.WindowManager;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -20,85 +19,82 @@ import com.google.android.material.color.MaterialColors;
 import java.util.ArrayList;
 import java.util.List;
 
-public class StatsDetailActivity extends AppCompatActivity {
+public class StatsDetailActivity extends BaseActivity {
     public static final String EXTRA_TYPE = "type";
     public static final String TYPE_CPU = "cpu";
     public static final String TYPE_RAM = "ram";
 
-    private LineChart chart;
-    private String type;
+    private LineChart statsLineChart;
+    private String statsCategory;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
-        DynamicColors.applyToActivitiesIfAvailable(this.getApplication());
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_stats_detail);
 
-        type = getIntent().getStringExtra(EXTRA_TYPE);
-        if (type == null) type = TYPE_CPU;
+        statsCategory = getIntent().getStringExtra(EXTRA_TYPE);
+        if (statsCategory == null) statsCategory = TYPE_CPU;
 
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+        Toolbar navigationBar = findViewById(R.id.toolbar);
+        setSupportActionBar(navigationBar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(false);
-            getSupportActionBar().setTitle(type.equals(TYPE_CPU) ? R.string.status_cpu : R.string.status_ram);
+            getSupportActionBar().setTitle(statsCategory.equals(TYPE_CPU) ? R.string.status_cpu : R.string.status_ram);
         }
 
-        chart = findViewById(R.id.chart);
-        TextView description = findViewById(R.id.text_description);
+        statsLineChart = findViewById(R.id.chart);
+        TextView statsDescription = findViewById(R.id.text_description);
         
-        description.setText(type.equals(TYPE_CPU) ? R.string.desc_cpu_history : R.string.desc_ram_history);
+        statsDescription.setText(statsCategory.equals(TYPE_CPU) ? R.string.desc_cpu_history : R.string.desc_ram_history);
 
-        setupChart();
-        updateData();
+        configureChart();
+        updateChartDisplay();
     }
 
-    private void setupChart() {
-        chart.getDescription().setEnabled(false);
-        chart.setTouchEnabled(true);
-        chart.setDragEnabled(true);
-        chart.setScaleEnabled(true);
-        chart.setPinchZoom(true);
-        chart.setDrawGridBackground(false);
-        chart.getLegend().setEnabled(false);
+    private void configureChart() {
+        statsLineChart.getDescription().setEnabled(false);
+        statsLineChart.setTouchEnabled(true);
+        statsLineChart.setDragEnabled(true);
+        statsLineChart.setScaleEnabled(true);
+        statsLineChart.setPinchZoom(true);
+        statsLineChart.setDrawGridBackground(false);
+        statsLineChart.getLegend().setEnabled(false);
 
-        chart.getXAxis().setDrawGridLines(false);
-        chart.getXAxis().setDrawLabels(false);
-        chart.getAxisRight().setEnabled(false);
+        statsLineChart.getXAxis().setDrawGridLines(false);
+        statsLineChart.getXAxis().setDrawLabels(false);
+        statsLineChart.getAxisRight().setEnabled(false);
         
-        chart.getAxisLeft().setAxisMinimum(0f);
-        chart.getAxisLeft().setAxisMaximum(100f);
-        chart.getAxisLeft().setTextColor(Color.GRAY);
-        chart.getAxisLeft().setDrawGridLines(true);
+        statsLineChart.getAxisLeft().setAxisMinimum(0f);
+        statsLineChart.getAxisLeft().setAxisMaximum(100f);
+        statsLineChart.getAxisLeft().setTextColor(Color.GRAY);
+        statsLineChart.getAxisLeft().setDrawGridLines(true);
     }
 
-    private void updateData() {
-        List<Float> history = type.equals(TYPE_CPU) 
-            ? StatsManager.getInstance().getCpuHistory() 
-            : StatsManager.getInstance().getRamHistory();
+    private void updateChartDisplay() {
+        List<Float> usageDataList = statsCategory.equals(TYPE_CPU) 
+            ? StatsManager.getInstance().getProcessorUsageList() 
+            : StatsManager.getInstance().getMemoryUsageList();
 
-        List<Entry> entries = new ArrayList<>();
-        for (int i = 0; i < history.size(); i++) {
-            entries.add(new Entry(i, history.get(i)));
+        List<Entry> chartEntries = new ArrayList<>();
+        for (int index = 0; index < usageDataList.size(); index++) {
+            chartEntries.add(new Entry(index, usageDataList.get(index)));
         }
 
-        int primaryColor = MaterialColors.getColor(this, com.google.android.material.R.attr.colorPrimary, Color.CYAN);
-        int surfaceColor = MaterialColors.getColor(this, com.google.android.material.R.attr.colorSurface, Color.WHITE);
+        int accentColor = MaterialColors.getColor(this, com.google.android.material.R.attr.colorPrimary, Color.CYAN);
 
-        LineDataSet dataSet = new LineDataSet(entries, type.toUpperCase());
-        dataSet.setColor(primaryColor);
-        dataSet.setLineWidth(3f);
-        dataSet.setDrawCircles(false);
-        dataSet.setDrawValues(false);
-        dataSet.setMode(LineDataSet.Mode.CUBIC_BEZIER);
-        dataSet.setDrawFilled(true);
-        dataSet.setFillColor(primaryColor);
-        dataSet.setFillAlpha(50);
+        LineDataSet usageDataSet = new LineDataSet(chartEntries, statsCategory.toUpperCase());
+        usageDataSet.setColor(accentColor);
+        usageDataSet.setLineWidth(3f);
+        usageDataSet.setDrawCircles(false);
+        usageDataSet.setDrawValues(false);
+        usageDataSet.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+        usageDataSet.setDrawFilled(true);
+        usageDataSet.setFillColor(accentColor);
+        usageDataSet.setFillAlpha(50);
 
-        LineData lineData = new LineData(dataSet);
-        chart.setData(lineData);
-        chart.getAxisLeft().setTextColor(MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurfaceVariant, Color.GRAY));
-        chart.invalidate();
+        LineData chartData = new LineData(usageDataSet);
+        statsLineChart.setData(chartData);
+        statsLineChart.getAxisLeft().setTextColor(MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurfaceVariant, Color.GRAY));
+        statsLineChart.invalidate();
     }
 }

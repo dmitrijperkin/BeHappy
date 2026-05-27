@@ -25,14 +25,14 @@ public class StorageFragment extends Fragment {
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        TabLayout tabLayout = view.findViewById(R.id.tab_layout);
-        ViewPager2 viewPager = view.findViewById(R.id.view_pager);
+        TabLayout tabs = view.findViewById(R.id.tab_layout);
+        ViewPager2 pager = view.findViewById(R.id.view_pager);
 
-        viewPager.setAdapter(new FragmentStateAdapter(this) {
+        pager.setAdapter(new FragmentStateAdapter(this) {
             @NonNull
             @Override
-            public Fragment createFragment(int position) {
-                switch (position) {
+            public Fragment createFragment(int pos) {
+                switch (pos) {
                     case 0: return new PoolsFragment();
                     case 1: return new SmbFragment();
                     default: return new DisksFragment();
@@ -45,11 +45,20 @@ public class StorageFragment extends Fragment {
             }
         });
 
-        new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {
-            switch (position) {
-                case 0: tab.setText(R.string.nav_storage); break;
-                case 1: tab.setText(R.string.nav_smb); break;
-                case 2: tab.setText(R.string.nav_disks); break;
+        new TabLayoutMediator(tabs, pager, (tab, pos) -> {
+            switch (pos) {
+                case 0: 
+                    tab.setText(R.string.nav_storage);
+                    tab.setIcon(R.drawable.harddisk);
+                    break;
+                case 1: 
+                    tab.setText(R.string.nav_smb);
+                    tab.setIcon(R.drawable.info);
+                    break;
+                case 2: 
+                    tab.setText(R.string.nav_disks);
+                    tab.setIcon(R.drawable.harddisk);
+                    break;
             }
         }).attach();
     }

@@ -1,6 +1,5 @@
 package com.dmitrij.behappy.ui;
 
-import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,7 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class VmAdapter extends RecyclerView.Adapter<VmAdapter.VmViewHolder> {
+public class VmAdapter extends RecyclerView.Adapter<VmAdapter.Holder> {
     
     public interface Displayable {
         String getDisplayName();
@@ -29,72 +28,71 @@ public class VmAdapter extends RecyclerView.Adapter<VmAdapter.VmViewHolder> {
     }
 
     private List<Displayable> items = new ArrayList<>();
-    private OnItemActionListener listener;
-    private OnItemUpdateListener updateListener;
+    private ActionListener actionListener;
+    private UpdateListener updateListener;
 
-    public interface OnItemActionListener {
+    public interface ActionListener {
         void onAction(Displayable item);
     }
 
-    public interface OnItemUpdateListener {
+    public interface UpdateListener {
         void onUpdate(Displayable item);
     }
 
-    public void setItems(List<Displayable> newItems) {
-        final List<Displayable> latestItems = newItems != null ? newItems : new ArrayList<>();
-        DiffUtil.DiffResult result = DiffUtil.calculateDiff(new DiffUtil.Callback() {
+    public void setItems(List<Displayable> list) {
+        final List<Displayable> newList = list != null ? list : new ArrayList<>();
+        DiffUtil.DiffResult res = DiffUtil.calculateDiff(new DiffUtil.Callback() {
             @Override
             public int getOldListSize() { return items.size(); }
             @Override
-            public int getNewListSize() { return latestItems.size(); }
+            public int getNewListSize() { return newList.size(); }
             @Override
-            public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
-                return Objects.equals(items.get(oldItemPosition).getDisplayName(), latestItems.get(newItemPosition).getDisplayName());
+            public boolean areItemsTheSame(int oldPos, int newPos) {
+                return Objects.equals(items.get(oldPos).getDisplayName(), newList.get(newPos).getDisplayName());
             }
             @Override
-            public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
-                Displayable oldI = items.get(oldItemPosition);
-                Displayable newI = latestItems.get(newItemPosition);
-                return Objects.equals(oldI.getDisplayStatus(), newI.getDisplayStatus()) &&
-                       Objects.equals(oldI.getDisplayInfo(), newI.getDisplayInfo()) &&
-                       oldI.isRunning() == newI.isRunning() &&
-                       oldI.hasUpdate() == newI.hasUpdate();
+            public boolean areContentsTheSame(int oldPos, int newPos) {
+                Displayable oldItem = items.get(oldPos);
+                Displayable newItem = newList.get(newPos);
+                return Objects.equals(oldItem.getDisplayStatus(), newItem.getDisplayStatus()) &&
+                       Objects.equals(oldItem.getDisplayInfo(), newItem.getDisplayInfo()) &&
+                       oldItem.isRunning() == newItem.isRunning() &&
+                       oldItem.hasUpdate() == newItem.hasUpdate();
             }
         });
-        this.items = new ArrayList<>(latestItems);
-        result.dispatchUpdatesTo(this);
+        items = new ArrayList<>(newList);
+        res.dispatchUpdatesTo(this);
     }
 
-    public void setOnItemActionListener(OnItemActionListener listener) {
-        this.listener = listener;
+    public void setActionListener(ActionListener l) {
+        this.actionListener = l;
     }
 
-    public void setOnItemUpdateListener(OnItemUpdateListener updateListener) {
-        this.updateListener = updateListener;
+    public void setUpdateListener(UpdateListener l) {
+        this.updateListener = l;
     }
 
     @NonNull
     @Override
-    public VmViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+    public Holder onCreateViewHolder(@NonNull ViewGroup parent, int type) {
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_vm, parent, false);
-        return new VmViewHolder(view);
+        return new Holder(view);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull VmViewHolder holder, int position) {
-        Displayable item = items.get(position);
+    public void onBindViewHolder(@NonNull Holder holder, int pos) {
+        Displayable item = items.get(pos);
         holder.name.setText(item.getDisplayName());
         
         String status = item.getDisplayStatus();
-        String translatedStatus = status;
-        if ("RUNNING".equalsIgnoreCase(status)) translatedStatus = holder.itemView.getContext().getString(R.string.status_running);
-        else if ("STOPPED".equalsIgnoreCase(status)) translatedStatus = holder.itemView.getContext().getString(R.string.status_stopped);
-        else if ("OFFLINE".equalsIgnoreCase(status)) translatedStatus = holder.itemView.getContext().getString(R.string.status_offline);
-        else if ("ONLINE".equalsIgnoreCase(status)) translatedStatus = holder.itemView.getContext().getString(R.string.status_online);
+        String local = status;
+        if ("RUNNING".equalsIgnoreCase(status)) local = holder.itemView.getContext().getString(R.string.status_running);
+        else if ("STOPPED".equalsIgnoreCase(status)) local = holder.itemView.getContext().getString(R.string.status_stopped);
+        else if ("OFFLINE".equalsIgnoreCase(status)) local = holder.itemView.getContext().getString(R.string.status_offline);
+        else if ("ONLINE".equalsIgnoreCase(status)) local = holder.itemView.getContext().getString(R.string.status_online);
 
-        holder.info.setText(String.format("%s • %s", translatedStatus, item.getDisplayInfo()));
-        
-        holder.actionBtn.setText(item.isRunning() ? R.string.action_stop : R.string.action_start);
+        holder.info.setText(String.format("%s • %s", local, item.getDisplayInfo()));
+        holder.btnAction.setText(item.isRunning() ? R.string.action_stop : R.string.action_start);
         
         if (item.isRunning()) {
             holder.info.setTextColor(MaterialColors.getColor(holder.itemView, com.google.android.material.R.attr.colorPrimary));
@@ -105,18 +103,18 @@ public class VmAdapter extends RecyclerView.Adapter<VmAdapter.VmViewHolder> {
         }
 
         if (item.hasUpdate()) {
-            holder.updateBadge.setVisibility(View.VISIBLE);
-            holder.updateBtn.setVisibility(View.VISIBLE);
+            holder.badge.setVisibility(View.VISIBLE);
+            holder.btnUpdate.setVisibility(View.VISIBLE);
         } else {
-            holder.updateBadge.setVisibility(View.GONE);
-            holder.updateBtn.setVisibility(View.GONE);
+            holder.badge.setVisibility(View.GONE);
+            holder.btnUpdate.setVisibility(View.GONE);
         }
         
-        holder.actionBtn.setOnClickListener(v -> {
-            if (listener != null) listener.onAction(item);
+        holder.btnAction.setOnClickListener(v -> {
+            if (actionListener != null) actionListener.onAction(item);
         });
 
-        holder.updateBtn.setOnClickListener(v -> {
+        holder.btnUpdate.setOnClickListener(v -> {
             if (updateListener != null) updateListener.onUpdate(item);
         });
     }
@@ -126,17 +124,17 @@ public class VmAdapter extends RecyclerView.Adapter<VmAdapter.VmViewHolder> {
         return items.size();
     }
 
-    static class VmViewHolder extends RecyclerView.ViewHolder {
-        TextView name, info, updateBadge;
-        Button actionBtn, updateBtn;
+    static class Holder extends RecyclerView.ViewHolder {
+        TextView name, info, badge;
+        Button btnAction, btnUpdate;
 
-        public VmViewHolder(@NonNull View itemView) {
-            super(itemView);
-            name = itemView.findViewById(R.id.entity_name);
-            info = itemView.findViewById(R.id.entity_info);
-            updateBadge = itemView.findViewById(R.id.update_badge);
-            actionBtn = itemView.findViewById(R.id.btn_action);
-            updateBtn = itemView.findViewById(R.id.btn_update);
+        public Holder(@NonNull View view) {
+            super(view);
+            name = view.findViewById(R.id.entity_name);
+            info = view.findViewById(R.id.entity_info);
+            badge = view.findViewById(R.id.update_badge);
+            btnAction = view.findViewById(R.id.btn_action);
+            btnUpdate = view.findViewById(R.id.btn_update);
         }
     }
 }

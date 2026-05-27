@@ -24,99 +24,98 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class VmFragment extends Fragment {
-    private TrueNasRepository repository;
+    private TrueNasRepository repo;
     private SecurePrefs prefs;
     private VmAdapter adapter;
-    private ProgressBar loadingProgress;
-    private SwipeRefreshLayout swipeRefresh;
-    private TextView emptyText;
+    private ProgressBar progress;
+    private SwipeRefreshLayout refresh;
+    private TextView empty;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_list, container, false);
         
-        repository = TrueNasRepository.getInstance();
+        repo = TrueNasRepository.getInstance();
         prefs = new SecurePrefs(requireContext());
         
-        RecyclerView recyclerView = view.findViewById(R.id.recycler_view);
-        loadingProgress = view.findViewById(R.id.loading_progress);
-        swipeRefresh = view.findViewById(R.id.swipe_refresh);
-        emptyText = view.findViewById(R.id.text_empty);
+        RecyclerView recycler = view.findViewById(R.id.recycler_view);
+        progress = view.findViewById(R.id.loading_progress);
+        refresh = view.findViewById(R.id.swipe_refresh);
+        empty = view.findViewById(R.id.text_empty);
         
-        recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        recycler.setLayoutManager(new LinearLayoutManager(requireContext()));
         adapter = new VmAdapter();
-        adapter.setOnItemActionListener(this::handleAction);
-        recyclerView.setAdapter(adapter);
+        adapter.setActionListener(this::onAction);
+        recycler.setAdapter(adapter);
         
-        swipeRefresh.setOnRefreshListener(this::loadData);
-        loadData();
+        refresh.setOnRefreshListener(this::fetch);
+        fetch();
         
         return view;
     }
 
-    private void loadData() {
-        loadingProgress.setVisibility(View.VISIBLE);
-        
-        repository.fetchVms(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), new TrueNasRepository.VmsCallback() {
+    private void fetch() {
+        progress.setVisibility(View.VISIBLE);
+        repo.fetchVms(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), new TrueNasRepository.VmsCallback() {
             @Override
-            public void onSuccess(List<VmInfo> vms) {
-                updateUI(new ArrayList<>(vms));
+            public void onSuccess(List<VmInfo> list) {
+                update(new ArrayList<>(list));
             }
 
             @Override
-            public void onError(String message) {
-                updateUI(new ArrayList<>());
+            public void onError(String err) {
+                update(new ArrayList<>());
                 if (isAdded()) {
-                    Toast.makeText(getContext(), message, Toast.LENGTH_LONG).show();
+                    Toast.makeText(getContext(), err, Toast.LENGTH_LONG).show();
                 }
             }
         });
     }
 
-    private void updateUI(final List<? extends VmAdapter.Displayable> list) {
+    private void update(final List<? extends VmAdapter.Displayable> list) {
         if (isAdded()) {
             requireActivity().runOnUiThread(() -> {
-                loadingProgress.setVisibility(View.GONE);
-                swipeRefresh.setRefreshing(false);
+                progress.setVisibility(View.GONE);
+                refresh.setRefreshing(false);
                 adapter.setItems(new ArrayList<>(list));
-                emptyText.setVisibility(list == null || list.isEmpty() ? View.VISIBLE : View.GONE);
+                empty.setVisibility(list == null || list.isEmpty() ? View.VISIBLE : View.GONE);
             });
         }
     }
 
-    private void handleAction(VmAdapter.Displayable item) {
-        if (item instanceof VmInfo) {
-            handleVmAction((VmInfo) item);
+    private void onAction(VmAdapter.Displayable item) {
+        if (item instanceof VmInfo vm) {
+            processAction(vm);
         }
     }
 
-    private TrueNasRepository.ActionCallback getActionCallback() {
+    private TrueNasRepository.ActionCallback createCallback() {
         return new TrueNasRepository.ActionCallback() {
             @Override
-            public void onDone(int messageResId) {
+            public void onDone(int resId) {
                 if (isAdded()) {
                     requireActivity().runOnUiThread(() -> {
-                        Toast.makeText(requireContext(), messageResId, Toast.LENGTH_SHORT).show();
-                        loadData();
+                        Toast.makeText(requireContext(), resId, Toast.LENGTH_SHORT).show();
+                        fetch();
                     });
                 }
             }
 
             @Override
-            public void onError(String message) {
+            public void onError(String err) {
                 if (isAdded()) {
-                    requireActivity().runOnUiThread(() -> Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show());
+                    requireActivity().runOnUiThread(() -> Toast.makeText(requireContext(), err, Toast.LENGTH_LONG).show());
                 }
             }
         };
     }
 
-    private void handleVmAction(VmInfo vm) {
+    private void processAction(VmInfo vm) {
         if (vm.isRunning()) {
-            repository.stopVm(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), vm.getId(), getActionCallback());
+            repo.stopVm(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), vm.getId(), createCallback());
         } else {
-            repository.startVm(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), vm.getId(), getActionCallback());
+            repo.startVm(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), vm.getId(), createCallback());
         }
     }
 }

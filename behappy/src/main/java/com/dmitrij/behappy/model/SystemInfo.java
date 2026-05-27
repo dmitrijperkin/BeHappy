@@ -4,30 +4,30 @@ import com.google.gson.annotations.SerializedName;
 
 public class SystemInfo {
     @SerializedName("version")
-    private String version;
+    private String softwareVersion;
 
     @SerializedName("uptime")
-    private String uptime;
+    private String systemUptimeSeconds;
 
     @SerializedName("model")
-    private String cpuModel;
+    private String processorModelName;
 
     @SerializedName("physmem")
-    private long totalMemory;
+    private long physicalMemoryBytes;
 
     public String getVersion() {
-        return version == null ? "unknown" : version;
+        return softwareVersion == null ? "unknown" : softwareVersion;
     }
 
     public String getUptime() {
-        return uptime == null ? "unknown" : uptime;
+        return systemUptimeSeconds == null ? "unknown" : systemUptimeSeconds;
     }
 
     public String getCpuModel() {
-        return cpuModel == null ? "unknown" : cpuModel;
+        return processorModelName == null ? "unknown" : processorModelName;
     }
 
     public long getTotalMemory() {
-        return totalMemory;
+        return physicalMemoryBytes;
     }
 }

@@ -16,15 +16,15 @@ public final class UnsafeOkHttpFactory {
     private UnsafeOkHttpFactory() {
     }
 
-    public static OkHttpClient createUnsafeClient(OkHttpClient.Builder baseBuilder) {
+    public static OkHttpClient createUnsafeClient(OkHttpClient.Builder httpClientBuilder) {
         try {
-            X509TrustManager trustAll = new X509TrustManager() {
+            X509TrustManager trustAllCertificatesManager = new X509TrustManager() {
                 @Override
-                public void checkClientTrusted(X509Certificate[] chain, String authType) {
+                public void checkClientTrusted(X509Certificate[] certChain, String authType) {
                 }
 
                 @Override
-                public void checkServerTrusted(X509Certificate[] chain, String authType) {
+                public void checkServerTrusted(X509Certificate[] certChain, String authType) {
                 }
 
                 @Override
@@ -33,22 +33,22 @@ public final class UnsafeOkHttpFactory {
                 }
             };
 
-            SSLContext sslContext = SSLContext.getInstance("TLS");
-            sslContext.init(null, new TrustManager[]{trustAll}, new SecureRandom());
+            SSLContext unsafeSslContext = SSLContext.getInstance("TLS");
+            unsafeSslContext.init(null, new TrustManager[]{trustAllCertificatesManager}, new SecureRandom());
 
-            HostnameVerifier unsafeHostnameVerifier = new HostnameVerifier() {
+            HostnameVerifier allHostsValidVerifier = new HostnameVerifier() {
                 @Override
-                public boolean verify(String hostname, SSLSession session) {
+                public boolean verify(String hostName, SSLSession sslSession) {
                     return true;
                 }
             };
 
-            return baseBuilder
-                    .sslSocketFactory(sslContext.getSocketFactory(), trustAll)
-                    .hostnameVerifier(unsafeHostnameVerifier)
+            return httpClientBuilder
+                    .sslSocketFactory(unsafeSslContext.getSocketFactory(), trustAllCertificatesManager)
+                    .hostnameVerifier(allHostsValidVerifier)
                     .build();
-        } catch (Exception exception) {
-            throw new IllegalStateException("Unable to create unsafe SSL client", exception);
+        } catch (Exception creationError) {
+            throw new IllegalStateException("Unable to create unsafe SSL client", creationError);
         }
     }
 }

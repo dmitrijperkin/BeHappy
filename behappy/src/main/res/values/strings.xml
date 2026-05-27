@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">BeHappy</string>
+    <string name="app_name_fake">Notes</string>
     <string name="saved">Saved</string>
     <string name="cpu_value">CPU: %.1f%%</string>
     <string name="ram_value">RAM: %.1f%%</string>
@@ -13,6 +14,16 @@
     <string name="nav_virtualization">VMs</string>
     <string name="nav_management">Management</string>
     <string name="nav_settings">Settings</string>
+    <string name="nav_network">Network</string>
+    <string name="nav_logs">Logs</string>
+    <string name="nav_audit">Audit</string>
+    <string name="label_audit_service">Service</string>
+    <string name="label_audit_user">User</string>
+    <string name="label_audit_timestamp">Timestamp</string>
+    <string name="label_audit_event">Event</string>
+    <string name="label_audit_data">Event Data</string>
+    <string name="btn_export_csv">Export to CSV</string>
+    <string name="hint_search_audit">Search by Event or Username</string>
     <string name="header_connection">Connection Settings</string>
     <string name="header_profiles">Profiles</string>
     <string name="label_profile_name">Profile Name</string>
@@ -95,6 +106,8 @@
     <string name="msg_app_stop">App stop requested</string>
     <string name="msg_scrub_started">Scrub started</string>
     <string name="msg_snapshot_created">Snapshot created</string>
+    <string name="msg_interface_enabled">Network interface enabled</string>
+    <string name="msg_interface_disabled">Network interface disabled</string>
     <string name="msg_reboot_requested">Server reboot requested</string>
     <string name="msg_shutdown_requested">Server shutdown requested</string>
     <string name="err_disks_failed">Disks request failed: %s</string>
@@ -141,4 +154,21 @@
     <string name="alert_pool_online">The pool %s state is ONLINE.</string>
     <string name="alert_task_failed">Task %s failed.</string>
     <string name="err_pool_id_missing">Pool ID is missing</string>
+    <string name="nav_ssh">SSH</string>
+    <string name="ssh_header">SSH Terminal</string>
+    <string name="ssh_connecting">Connecting to TrueNAS...</string>
+    <string name="ssh_type_command">Type command...</string>
+    <string name="label_ssh_creds">SSH Credentials (Optional)</string>
+    <string name="label_ssh_user">SSH Username</string>
+    <string name="label_ssh_password">SSH Password</string>
+    <string name="ssh_user_hint">User</string>
+    <string name="ssh_pass_hint">Password</string>
+    <string name="btn_connect_ssh">Connect</string>
+    <string name="ssh_demo_error">SSH terminal is not available in Demo Mode.</string>
+    <string name="ssh_connected"> Connected.</string>
+    <string name="ssh_connecting_new">\nConnecting with new credentials...</string>
+    <string name="ssh_result_title">Command Result</string>
+    <string name="btn_close">Close</string>
+    <string name="ssh_terminal_name">truenas_shell</string>
+    <string name="ssh_prompt">></string>
 </resources>

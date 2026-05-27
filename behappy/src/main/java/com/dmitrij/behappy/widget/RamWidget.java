@@ -12,7 +12,7 @@ public class RamWidget extends BaseGraphWidget {
 
     @Override
     protected List<Float> getHistory() {
-        return StatsManager.getInstance().getRamHistory();
+        return StatsManager.getInstance().getMemoryUsageList();
     }
 
     @Override

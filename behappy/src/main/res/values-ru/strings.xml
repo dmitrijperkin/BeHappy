@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">BeHappy</string>
+    <string name="app_name_fake">Заметки</string>
     <string name="saved">Сохранено</string>
     <string name="cpu_value">ЦП: %.1f%%</string>
     <string name="ram_value">ОЗУ: %.1f%%</string>
@@ -13,6 +14,16 @@
     <string name="nav_virtualization">ВМ</string>
     <string name="nav_management">Управление</string>
     <string name="nav_settings">Настройки</string>
+    <string name="nav_network">Сеть</string>
+    <string name="nav_logs">Логи</string>
+    <string name="nav_audit">Аудит</string>
+    <string name="label_audit_service">Служба</string>
+    <string name="label_audit_user">Пользователь</string>
+    <string name="label_audit_timestamp">Метка времени</string>
+    <string name="label_audit_event">Событие</string>
+    <string name="label_audit_data">Данные события</string>
+    <string name="btn_export_csv">Экспортировать в CSV</string>
+    <string name="hint_search_audit">Поиск по событию или пользователю</string>
     <string name="header_connection">Параметры подключения</string>
     <string name="header_profiles">Профили</string>
     <string name="label_profile_name">Имя профиля</string>
@@ -95,6 +106,8 @@
     <string name="msg_app_stop">Запрос на остановку приложения отправлен</string>
     <string name="msg_scrub_started">Проверка (scrub) запущена</string>
     <string name="msg_snapshot_created">Снимок (snapshot) создан</string>
+    <string name="msg_interface_enabled">Интерфейс включен</string>
+    <string name="msg_interface_disabled">Интерфейс выключен</string>
     <string name="msg_reboot_requested">Запрос на перезагрузку отправлен</string>
     <string name="msg_shutdown_requested">Запрос на выключение отправлен</string>
     <string name="err_disks_failed">Ошибка при запросе дисков: %s</string>
@@ -141,4 +154,21 @@
     <string name="alert_pool_online">Пул %s находится в состоянии ONLINE.</string>
     <string name="alert_task_failed">Задача %s не удалась.</string>
     <string name="err_pool_id_missing">ID пула отсутствует</string>
+    <string name="nav_ssh">SSH</string>
+    <string name="ssh_header">SSH Терминал</string>
+    <string name="ssh_connecting">Подключение к TrueNAS…</string>
+    <string name="ssh_type_command">Введите команду…</string>
+    <string name="label_ssh_creds">SSH Данные (Опционально)</string>
+    <string name="label_ssh_user">SSH Пользователь</string>
+    <string name="label_ssh_password">SSH Пароль</string>
+    <string name="ssh_user_hint">Логин</string>
+    <string name="ssh_pass_hint">Пароль</string>
+    <string name="btn_connect_ssh">Вход</string>
+    <string name="ssh_demo_error">SSH терминал недоступен в демо-режиме.</string>
+    <string name="ssh_connected"> Подключено.</string>
+    <string name="ssh_connecting_new">\nПодключение с новыми данными…</string>
+    <string name="ssh_result_title">Результат команды</string>
+    <string name="btn_close">Закрыть</string>
+    <string name="ssh_terminal_name">truenas_shell</string>
+    <string name="ssh_prompt">></string>
 </resources>

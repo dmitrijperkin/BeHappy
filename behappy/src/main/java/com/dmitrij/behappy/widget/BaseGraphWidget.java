@@ -31,116 +31,116 @@ public abstract class BaseGraphWidget extends AppWidgetProvider {
     protected abstract int getGraphColor();
 
     @Override
-    public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
-        WidgetRefreshWorker.enqueue(context);
-        for (int appWidgetId : appWidgetIds) {
-            updateWidget(context, appWidgetManager, appWidgetId);
+    public void onUpdate(Context appContext, AppWidgetManager widgetManager, int[] widgetIdentifiersList) {
+        WidgetRefreshWorker.enqueue(appContext);
+        for (int singleWidgetId : widgetIdentifiersList) {
+            refreshWidgetDisplay(appContext, widgetManager, singleWidgetId);
         }
     }
 
-    private void updateWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
-        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_graph);
-        views.setTextViewText(R.id.widget_graph_title, getTitle());
+    private void refreshWidgetDisplay(Context appContext, AppWidgetManager widgetManager, int singleWidgetId) {
+        RemoteViews remoteViewsObject = new RemoteViews(appContext.getPackageName(), R.layout.widget_graph);
+        remoteViewsObject.setTextViewText(R.id.widget_graph_title, getTitle());
 
-        List<Float> history = getHistory();
-        if (history != null && !history.isEmpty()) {
-            float lastValue = history.get(history.size() - 1);
-            views.setTextViewText(R.id.widget_graph_value, String.format(Locale.getDefault(), "%.1f%%", lastValue));
-            views.setImageViewBitmap(R.id.widget_graph_image, drawGraph(history, getGraphColor()));
+        List<Float> statsHistoryList = getHistory();
+        if (statsHistoryList != null && !statsHistoryList.isEmpty()) {
+            float mostRecentValue = statsHistoryList.get(statsHistoryList.size() - 1);
+            remoteViewsObject.setTextViewText(R.id.widget_graph_value, String.format(Locale.getDefault(), "%.1f%%", mostRecentValue));
+            remoteViewsObject.setImageViewBitmap(R.id.widget_graph_image, renderGraphBitmap(statsHistoryList, getGraphColor()));
         } else {
-            views.setTextViewText(R.id.widget_graph_value, "---");
+            remoteViewsObject.setTextViewText(R.id.widget_graph_value, "---");
         }
 
-        Intent intent = new Intent(context, MainActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
-        views.setOnClickPendingIntent(R.id.widget_graph_title, pendingIntent);
+        Intent launcherActivityIntent = new Intent(appContext, MainActivity.class);
+        PendingIntent clickPendingIntent = PendingIntent.getActivity(appContext, 0, launcherActivityIntent, PendingIntent.FLAG_IMMUTABLE);
+        remoteViewsObject.setOnClickPendingIntent(R.id.widget_graph_title, clickPendingIntent);
 
-        SecurePrefs prefs = new SecurePrefs(context);
-        if (!prefs.getHost().isEmpty()) {
-            TrueNasRepository.getInstance().fetchUsage(context, prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), new TrueNasRepository.UsageCallback() {
+        SecurePrefs userPreferences = new SecurePrefs(appContext);
+        if (!userPreferences.getHost().isEmpty()) {
+            TrueNasRepository.getInstance().fetchUsage(appContext, userPreferences.getHost(), userPreferences.getApiKey(), userPreferences.isAllowSelfSigned(), new TrueNasRepository.UsageCallback() {
                 @Override
-                public void onSuccess(UsageInfo info) {
-                    boolean isCpu = getTitle().toUpperCase().contains("CPU");
-                    float val = (float) (isCpu ? info.getCpuPercent() : info.getRamPercent());
-                    if (isCpu) StatsManager.getInstance().addCpuSample(val);
-                    else StatsManager.getInstance().addRamSample(val);
+                public void onSuccess(UsageInfo usageInformation) {
+                    boolean isCpuTitle = getTitle().toUpperCase().contains("CPU");
+                    float usageValue = (float) (isCpuTitle ? usageInformation.getCpuPercent() : usageInformation.getRamPercent());
+                    if (isCpuTitle) StatsManager.getInstance().addCpuSample(usageValue);
+                    else StatsManager.getInstance().addRamSample(usageValue);
                     
-                    AppWidgetManager.getInstance(context).updateAppWidget(appWidgetId, buildViews(context, getTitle(), getHistory(), getGraphColor(), pendingIntent));
+                    AppWidgetManager.getInstance(appContext).updateAppWidget(singleWidgetId, constructRemoteViews(appContext, getTitle(), getHistory(), getGraphColor(), clickPendingIntent));
                 }
-                @Override public void onError(String m) {}
+                @Override public void onError(String errorMessage) {}
             });
         }
 
-        appWidgetManager.updateAppWidget(appWidgetId, views);
+        widgetManager.updateAppWidget(singleWidgetId, remoteViewsObject);
     }
 
-    private RemoteViews buildViews(Context context, String title, List<Float> history, int color, PendingIntent pi) {
-        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_graph);
-        views.setTextViewText(R.id.widget_graph_title, title);
-        if (history != null && !history.isEmpty()) {
-            float lastValue = history.get(history.size() - 1);
-            views.setTextViewText(R.id.widget_graph_value, String.format(Locale.getDefault(), "%.1f%%", lastValue));
-            views.setImageViewBitmap(R.id.widget_graph_image, drawGraph(history, color));
+    private RemoteViews constructRemoteViews(Context appContext, String widgetTitle, List<Float> statsHistoryList, int graphColor, PendingIntent clickActionPendingIntent) {
+        RemoteViews remoteViewsObject = new RemoteViews(appContext.getPackageName(), R.layout.widget_graph);
+        remoteViewsObject.setTextViewText(R.id.widget_graph_title, widgetTitle);
+        if (statsHistoryList != null && !statsHistoryList.isEmpty()) {
+            float mostRecentValue = statsHistoryList.get(statsHistoryList.size() - 1);
+            remoteViewsObject.setTextViewText(R.id.widget_graph_value, String.format(Locale.getDefault(), "%.1f%%", mostRecentValue));
+            remoteViewsObject.setImageViewBitmap(R.id.widget_graph_image, renderGraphBitmap(statsHistoryList, graphColor));
         }
-        views.setOnClickPendingIntent(R.id.widget_graph_title, pi);
-        return views;
+        remoteViewsObject.setOnClickPendingIntent(R.id.widget_graph_title, clickActionPendingIntent);
+        return remoteViewsObject;
     }
 
-    private Bitmap drawGraph(List<Float> history, int color) {
-        int width = 300;
-        int height = 150;
-        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
+    private Bitmap renderGraphBitmap(List<Float> statsHistoryList, int graphColor) {
+        int bitmapWidth = 300;
+        int bitmapHeight = 150;
+        Bitmap graphBitmap = Bitmap.createBitmap(bitmapWidth, bitmapHeight, Bitmap.Config.ARGB_8888);
+        Canvas graphCanvas = new Canvas(graphBitmap);
         
-        if (history.size() < 2) {
-            if (history.size() == 1) {
-                Paint p = new Paint();
-                p.setColor(color);
-                p.setStrokeWidth(5f);
-                float y = height - (history.get(0) / 100f * height);
-                canvas.drawLine(0, y, width, y, p);
+        if (statsHistoryList.size() < 2) {
+            if (statsHistoryList.size() == 1) {
+                Paint singlePointPaint = new Paint();
+                singlePointPaint.setColor(graphColor);
+                singlePointPaint.setStrokeWidth(5f);
+                float yCoordinate = bitmapHeight - (statsHistoryList.get(0) / 100f * bitmapHeight);
+                graphCanvas.drawLine(0, yCoordinate, bitmapWidth, yCoordinate, singlePointPaint);
             }
-            return bitmap;
+            return graphBitmap;
         }
 
-        Paint linePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        linePaint.setColor(color);
-        linePaint.setStyle(Paint.Style.STROKE);
-        linePaint.setStrokeWidth(6f);
-        linePaint.setStrokeCap(Paint.Cap.ROUND);
+        Paint graphLinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        graphLinePaint.setColor(graphColor);
+        graphLinePaint.setStyle(Paint.Style.STROKE);
+        graphLinePaint.setStrokeWidth(6f);
+        graphLinePaint.setStrokeCap(Paint.Cap.ROUND);
 
-        Paint fillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        fillPaint.setStyle(Paint.Style.FILL);
-        fillPaint.setShader(new LinearGradient(0, 0, 0, height, 
-            adjustAlpha(color, 0.4f), Color.TRANSPARENT, Shader.TileMode.CLAMP));
+        Paint graphFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        graphFillPaint.setStyle(Paint.Style.FILL);
+        graphFillPaint.setShader(new LinearGradient(0, 0, 0, bitmapHeight, 
+            getAlphaAdjustedColor(graphColor, 0.4f), Color.TRANSPARENT, Shader.TileMode.CLAMP));
 
-        Path path = new Path();
-        float xStep = (float) width / (history.size() - 1);
+        Path graphPath = new Path();
+        float xCoordinateStep = (float) bitmapWidth / (statsHistoryList.size() - 1);
         
-        for (int i = 0; i < history.size(); i++) {
-            float x = i * xStep;
-            float y = height - (history.get(i) / 100f * height);
-            if (i == 0) path.moveTo(x, y);
+        for (int index = 0; index < statsHistoryList.size(); index++) {
+            float xCoordinate = index * xCoordinateStep;
+            float yCoordinate = bitmapHeight - (statsHistoryList.get(index) / 100f * bitmapHeight);
+            if (index == 0) graphPath.moveTo(xCoordinate, yCoordinate);
             else {
-                float prevX = (i - 1) * xStep;
-                float prevY = height - (history.get(i - 1) / 100f * height);
-                path.cubicTo((prevX + x) / 2, prevY, (prevX + x) / 2, y, x, y);
+                float previousX = (index - 1) * xCoordinateStep;
+                float previousY = bitmapHeight - (statsHistoryList.get(index - 1) / 100f * bitmapHeight);
+                graphPath.cubicTo((previousX + xCoordinate) / 2, previousY, (previousX + xCoordinate) / 2, yCoordinate, xCoordinate, yCoordinate);
             }
         }
 
-        Path fillPath = new Path(path);
-        fillPath.lineTo(width, height);
-        fillPath.lineTo(0, height);
-        fillPath.close();
+        Path graphFillPath = new Path(graphPath);
+        graphFillPath.lineTo(bitmapWidth, bitmapHeight);
+        graphFillPath.lineTo(0, bitmapHeight);
+        graphFillPath.close();
 
-        canvas.drawPath(fillPath, fillPaint);
-        canvas.drawPath(path, linePaint);
+        graphCanvas.drawPath(graphFillPath, graphFillPaint);
+        graphCanvas.drawPath(graphPath, graphLinePaint);
         
-        return bitmap;
+        return graphBitmap;
     }
 
-    private int adjustAlpha(int color, float factor) {
-        int alpha = Math.round(Color.alpha(color) * factor);
-        return Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color));
+    private int getAlphaAdjustedColor(int baseColor, float alphaFactor) {
+        int adjustedAlpha = Math.round(Color.alpha(baseColor) * alphaFactor);
+        return Color.argb(adjustedAlpha, Color.red(baseColor), Color.green(baseColor), Color.blue(baseColor));
     }
 }

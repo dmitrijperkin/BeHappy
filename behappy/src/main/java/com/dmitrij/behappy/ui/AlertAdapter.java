@@ -1,6 +1,5 @@
 package com.dmitrij.behappy.ui;
 
-import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -8,6 +7,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -18,96 +18,76 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class AlertAdapter extends RecyclerView.Adapter<AlertAdapter.AlertViewHolder> {
-    private List<AlertInfo> alerts = new ArrayList<>();
+public class AlertAdapter extends RecyclerView.Adapter<AlertAdapter.Holder> {
+    private List<AlertInfo> items = new ArrayList<>();
 
-    public void setAlerts(List<AlertInfo> newAlerts) {
-        final List<AlertInfo> latestAlerts = newAlerts != null ? newAlerts : new ArrayList<>();
-        DiffUtil.DiffResult result = DiffUtil.calculateDiff(new DiffUtil.Callback() {
+    public void setAlerts(List<AlertInfo> list) {
+        final List<AlertInfo> newList = list != null ? list : new ArrayList<>();
+        DiffUtil.DiffResult res = DiffUtil.calculateDiff(new DiffUtil.Callback() {
             @Override
-            public int getOldListSize() { return alerts.size(); }
+            public int getOldListSize() { return items.size(); }
             @Override
-            public int getNewListSize() { return latestAlerts.size(); }
+            public int getNewListSize() { return newList.size(); }
             @Override
-            public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
-                return Objects.equals(alerts.get(oldItemPosition).getFormatted(), latestAlerts.get(newItemPosition).getFormatted());
+            public boolean areItemsTheSame(int oldPos, int newPos) {
+                return Objects.equals(items.get(oldPos).getFormatted(), newList.get(newPos).getFormatted());
             }
             @Override
-            public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
-                return Objects.equals(alerts.get(oldItemPosition), latestAlerts.get(newItemPosition));
+            public boolean areContentsTheSame(int oldPos, int newPos) {
+                return Objects.equals(items.get(oldPos).getLevel(), newList.get(newPos).getLevel());
             }
         });
-        this.alerts = new ArrayList<>(latestAlerts);
-        result.dispatchUpdatesTo(this);
+        items = new ArrayList<>(newList);
+        res.dispatchUpdatesTo(this);
     }
 
     @NonNull
     @Override
-    public AlertViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+    public Holder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_alert, parent, false);
-        return new AlertViewHolder(view);
+        return new Holder(view);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull AlertViewHolder holder, int position) {
-        AlertInfo alert = alerts.get(position);
-        Context context = holder.itemView.getContext();
-        
-        String formatted = alert.getFormatted();
-        if ("Update available.".equalsIgnoreCase(formatted)) {
-            formatted = context.getString(R.string.alert_update_available);
-        } else if (formatted.startsWith("Scrub for pool '")) {
-            String poolName = formatted.substring(16, formatted.indexOf("'", 16));
-            formatted = context.getString(R.string.alert_scrub_finished, poolName);
-        } else if (formatted.startsWith("The volume ") && formatted.contains(" state is ONLINE")) {
-            String poolName = formatted.substring(11, formatted.indexOf(" ", 11));
-            formatted = context.getString(R.string.alert_pool_online, poolName);
-        } else if (formatted.startsWith("Task ") && formatted.endsWith(" failed.")) {
-            String taskName = formatted.substring(5, formatted.length() - 8);
-            formatted = context.getString(R.string.alert_task_failed, taskName);
-        }
-        else if ("System has been running stable for over 30 days. All services are normal.".equals(formatted) ||
-            "Система работает стабильно более 30 дней. Все службы в норме.".equals(formatted)) {
-            formatted = context.getString(R.string.demo_alert_stable);
-        } else if ("Update available for Plex application.".equals(formatted) ||
-                   "Доступно обновление для приложения Plex.".equals(formatted)) {
-            formatted = context.getString(R.string.demo_alert_update);
-        }
+    public void onBindViewHolder(@NonNull Holder holder, int position) {
+        AlertInfo info = items.get(position);
+        holder.text.setText(info.getFormatted());
+        holder.level.setText(info.getLevel());
 
-        holder.text.setText(formatted);
+        int color;
+        int icon;
 
-        String level = alert.getLevel();
-        String translatedLevel = level;
-        if ("INFO".equalsIgnoreCase(level)) translatedLevel = holder.itemView.getContext().getString(R.string.level_info);
-        else if ("WARNING".equalsIgnoreCase(level)) translatedLevel = holder.itemView.getContext().getString(R.string.level_warning);
-        else if ("CRITICAL".equalsIgnoreCase(level)) translatedLevel = holder.itemView.getContext().getString(R.string.level_critical);
-        else if ("ERROR".equalsIgnoreCase(level)) translatedLevel = holder.itemView.getContext().getString(R.string.level_error);
-        
-        holder.level.setText(translatedLevel);
-
-        if ("CRITICAL".equalsIgnoreCase(level) || "ERROR".equalsIgnoreCase(level)) {
-            holder.level.setTextColor(0xFFFF4444);
-        } else if ("WARNING".equalsIgnoreCase(level)) {
-            holder.level.setTextColor(0xFFFFBB33);
+        String level = info.getLevel().toUpperCase();
+        if (level.contains("CRITICAL") || level.contains("ERROR") || level.contains("FATAL")) {
+            color = ContextCompat.getColor(holder.itemView.getContext(), R.color.accent_red);
+            icon = android.R.drawable.stat_notify_error;
+        } else if (level.contains("WARN")) {
+            color = ContextCompat.getColor(holder.itemView.getContext(), android.R.color.holo_orange_dark);
+            icon = android.R.drawable.stat_sys_warning;
         } else {
-            holder.level.setTextColor(0xFF2481CC);
+            color = ContextCompat.getColor(holder.itemView.getContext(), R.color.tg_blue);
+            icon = android.R.drawable.stat_notify_chat;
         }
+
+        holder.level.setTextColor(color);
+        holder.icon.setImageResource(icon);
+        holder.icon.setColorFilter(color);
     }
 
     @Override
     public int getItemCount() {
-        return alerts.size();
+        return items.size();
     }
 
-    static class AlertViewHolder extends RecyclerView.ViewHolder {
-        TextView text, level;
+    public static class Holder extends RecyclerView.ViewHolder {
         ImageView icon;
+        TextView text, level;
 
-        public AlertViewHolder(@NonNull View itemView) {
+        public Holder(@NonNull View itemView) {
             super(itemView);
+            icon = itemView.findViewById(R.id.alert_icon);
             text = itemView.findViewById(R.id.alert_text);
             level = itemView.findViewById(R.id.alert_level);
-            icon = itemView.findViewById(R.id.alert_icon);
         }
     }
 }

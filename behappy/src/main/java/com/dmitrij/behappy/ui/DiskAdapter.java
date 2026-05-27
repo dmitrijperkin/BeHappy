@@ -1,6 +1,5 @@
 package com.dmitrij.behappy.ui;
 
-import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -19,66 +18,65 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
-public class DiskAdapter extends RecyclerView.Adapter<DiskAdapter.DiskViewHolder> {
-    private List<DiskInfo> disks = new ArrayList<>();
-    private OnDiskClickListener listener;
+public class DiskAdapter extends RecyclerView.Adapter<DiskAdapter.Holder> {
+    private List<DiskInfo> items = new ArrayList<>();
+    private Listener listener;
 
-    public interface OnDiskClickListener {
-        void onDiskClick(DiskInfo disk);
+    public interface Listener {
+        void onDiskClick(DiskInfo info);
     }
 
-    public void setListener(OnDiskClickListener listener) {
-        this.listener = listener;
+    public void setListener(Listener l) {
+        this.listener = l;
     }
 
-    public void setDisks(List<DiskInfo> newDisks) {
-        final List<DiskInfo> latest = newDisks != null ? newDisks : new ArrayList<>();
-        DiffUtil.DiffResult result = DiffUtil.calculateDiff(new DiffUtil.Callback() {
-            @Override public int getOldListSize() { return disks.size(); }
-            @Override public int getNewListSize() { return latest.size(); }
-            @Override public boolean areItemsTheSame(int oldP, int newP) {
-                return Objects.equals(disks.get(oldP).getSerial(), latest.get(newP).getSerial());
+    public void setDisks(List<DiskInfo> list) {
+        final List<DiskInfo> newList = list != null ? list : new ArrayList<>();
+        DiffUtil.DiffResult res = DiffUtil.calculateDiff(new DiffUtil.Callback() {
+            @Override public int getOldListSize() { return items.size(); }
+            @Override public int getNewListSize() { return newList.size(); }
+            @Override public boolean areItemsTheSame(int oldPos, int newPos) {
+                return Objects.equals(items.get(oldPos).getSerial(), newList.get(newPos).getSerial());
             }
-            @Override public boolean areContentsTheSame(int oldP, int newP) {
-                return Objects.equals(disks.get(oldP).getTemperature(), latest.get(newP).getTemperature()) &&
-                       Objects.equals(disks.get(oldP).getName(), latest.get(newP).getName());
+            @Override public boolean areContentsTheSame(int oldPos, int newPos) {
+                return Objects.equals(items.get(oldPos).getTemperature(), newList.get(newPos).getTemperature()) &&
+                       Objects.equals(items.get(oldPos).getName(), newList.get(newPos).getName());
             }
         });
-        this.disks = new ArrayList<>(latest);
-        result.dispatchUpdatesTo(this);
+        items = new ArrayList<>(newList);
+        res.dispatchUpdatesTo(this);
     }
 
     @NonNull
     @Override
-    public DiskViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+    public Holder onCreateViewHolder(@NonNull ViewGroup parent, int type) {
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_disk, parent, false);
-        return new DiskViewHolder(view);
+        return new Holder(view);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull DiskViewHolder holder, int position) {
-        DiskInfo disk = disks.get(position);
-        holder.model.setText(disk.getModel());
-        holder.nameSerial.setText(String.format("%s • SN: %s", disk.getName(), disk.getSerial()));
-        holder.size.setText(formatSize(disk.getSize()));
-        holder.type.setText(disk.getType());
+    public void onBindViewHolder(@NonNull Holder holder, int pos) {
+        DiskInfo info = items.get(pos);
+        holder.model.setText(info.getModel());
+        holder.id.setText(String.format("%s • SN: %s", info.getName(), info.getSerial()));
+        holder.size.setText(formatSize(info.getSize()));
+        holder.type.setText(info.getType());
 
         holder.itemView.setOnClickListener(v -> {
-            if (listener != null) listener.onDiskClick(disk);
+            if (listener != null) listener.onDiskClick(info);
         });
 
-        if (disk.getTemperature() != null) {
-            int temp = disk.getTemperature();
-            holder.temp.setText(String.format(Locale.getDefault(), "%d°C", temp));
+        if (info.getTemperature() != null) {
+            int t = info.getTemperature();
+            holder.temp.setText(String.format(Locale.getDefault(), "%d°C", t));
             
-            if (temp < 40) {
+            if (t < 40) {
                 holder.temp.setTextColor(MaterialColors.getColor(holder.itemView, com.google.android.material.R.attr.colorPrimary));
-            } else if (temp < 50) {
+            } else if (t < 50) {
                 holder.temp.setTextColor(MaterialColors.getColor(holder.itemView, com.google.android.material.R.attr.colorTertiary));
             } else {
                 holder.temp.setTextColor(MaterialColors.getColor(holder.itemView, com.google.android.material.R.attr.colorError));
             }
-            
             holder.temp.setVisibility(View.VISIBLE);
         } else {
             holder.temp.setVisibility(View.GONE);
@@ -88,25 +86,25 @@ public class DiskAdapter extends RecyclerView.Adapter<DiskAdapter.DiskViewHolder
     private String formatSize(long bytes) {
         if (bytes <= 0) return "0 B";
         final String[] units = new String[]{"B", "KB", "MB", "GB", "TB", "PB"};
-        int digitGroups = (int) (Math.log10(bytes) / Math.log10(1024));
-        return String.format(Locale.US, "%.1f %s", bytes / Math.pow(1024, digitGroups), units[digitGroups]);
+        int i = (int) (Math.log10(bytes) / Math.log10(1024));
+        return String.format(Locale.US, "%.1f %s", bytes / Math.pow(1024, i), units[i]);
     }
 
     @Override
     public int getItemCount() {
-        return disks.size();
+        return items.size();
     }
 
-    static class DiskViewHolder extends RecyclerView.ViewHolder {
-        TextView model, nameSerial, size, type, temp;
+    static class Holder extends RecyclerView.ViewHolder {
+        TextView model, id, size, type, temp;
 
-        public DiskViewHolder(@NonNull View itemView) {
-            super(itemView);
-            model = itemView.findViewById(R.id.disk_model);
-            nameSerial = itemView.findViewById(R.id.disk_name_serial);
-            size = itemView.findViewById(R.id.disk_size);
-            type = itemView.findViewById(R.id.disk_type);
-            temp = itemView.findViewById(R.id.disk_temp);
+        public Holder(@NonNull View view) {
+            super(view);
+            model = view.findViewById(R.id.disk_model);
+            id = view.findViewById(R.id.disk_name_serial);
+            size = view.findViewById(R.id.disk_size);
+            type = view.findViewById(R.id.disk_type);
+            temp = view.findViewById(R.id.disk_temp);
         }
     }
 }

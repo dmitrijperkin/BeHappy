@@ -24,12 +24,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AppsFragment extends Fragment {
-    private TrueNasRepository repository;
+    private TrueNasRepository repo;
     private SecurePrefs prefs;
     private VmAdapter adapter;
-    private ProgressBar loadingProgress;
-    private SwipeRefreshLayout swipeRefresh;
-    private TextView emptyText;
+    private ProgressBar progress;
+    private SwipeRefreshLayout refresh;
+    private TextView empty;
 
     @Nullable
     @Override
@@ -40,50 +40,49 @@ public class AppsFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        repository = TrueNasRepository.getInstance();
+        repo = TrueNasRepository.getInstance();
         prefs = new SecurePrefs(requireContext());
 
-        RecyclerView recyclerView = view.findViewById(R.id.recycler_view);
-        loadingProgress = view.findViewById(R.id.loading_progress);
-        swipeRefresh = view.findViewById(R.id.swipe_refresh);
-        emptyText = view.findViewById(R.id.text_empty);
+        RecyclerView recycler = view.findViewById(R.id.recycler_view);
+        progress = view.findViewById(R.id.loading_progress);
+        refresh = view.findViewById(R.id.swipe_refresh);
+        empty = view.findViewById(R.id.text_empty);
 
-        recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        recycler.setLayoutManager(new LinearLayoutManager(requireContext()));
         adapter = new VmAdapter();
-        adapter.setOnItemActionListener(this::handleAction);
-        adapter.setOnItemUpdateListener(this::handleUpdate);
-        recyclerView.setAdapter(adapter);
+        adapter.setActionListener(this::onAction);
+        adapter.setUpdateListener(this::onUpdate);
+        recycler.setAdapter(adapter);
 
-        swipeRefresh.setOnRefreshListener(this::loadApps);
-        loadApps();
+        refresh.setOnRefreshListener(this::fetch);
+        fetch();
     }
 
-    private void handleUpdate(VmAdapter.Displayable item) {
-        if (!(item instanceof IxAppInfo)) return;
-        IxAppInfo app = (IxAppInfo) item;
+    private void onUpdate(VmAdapter.Displayable item) {
+        if (!(item instanceof IxAppInfo app)) return;
         
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.btn_update)
                 .setMessage(getString(R.string.msg_update_found, app.getVersion()) + "?")
-                .setPositiveButton(R.string.dialog_confirm, (dialog, which) -> {
-                    loadingProgress.setVisibility(View.VISIBLE);
-                    repository.upgradeApp(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), app.getName(), new TrueNasRepository.ActionCallback() {
+                .setPositiveButton(R.string.dialog_confirm, (di, i) -> {
+                    progress.setVisibility(View.VISIBLE);
+                    repo.upgradeApp(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), app.getName(), new TrueNasRepository.ActionCallback() {
                         @Override
-                        public void onDone(int messageResId) {
+                        public void onDone(int resId) {
                             if (!isAdded()) return;
                             requireActivity().runOnUiThread(() -> {
-                                loadingProgress.setVisibility(View.GONE);
-                                Toast.makeText(requireContext(), messageResId, Toast.LENGTH_LONG).show();
-                                loadApps();
+                                progress.setVisibility(View.GONE);
+                                Toast.makeText(requireContext(), resId, Toast.LENGTH_LONG).show();
+                                fetch();
                             });
                         }
 
                         @Override
-                        public void onError(String message) {
+                        public void onError(String err) {
                             if (!isAdded()) return;
                             requireActivity().runOnUiThread(() -> {
-                                loadingProgress.setVisibility(View.GONE);
-                                Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
+                                progress.setVisibility(View.GONE);
+                                Toast.makeText(requireContext(), err, Toast.LENGTH_LONG).show();
                             });
                         }
                     });
@@ -92,55 +91,54 @@ public class AppsFragment extends Fragment {
                 .show();
     }
 
-    private void loadApps() {
-        loadingProgress.setVisibility(View.VISIBLE);
-        repository.fetchApps(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), new TrueNasRepository.AppsCallback() {
+    private void fetch() {
+        progress.setVisibility(View.VISIBLE);
+        repo.fetchApps(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), new TrueNasRepository.AppsCallback() {
             @Override
-            public void onSuccess(List<IxAppInfo> info) {
-                updateUI(info == null ? new ArrayList<>() : new ArrayList<>(info));
+            public void onSuccess(List<IxAppInfo> list) {
+                update(list == null ? new ArrayList<>() : new ArrayList<>(list));
             }
 
             @Override
-            public void onError(String message) {
-                updateUI(new ArrayList<>());
-                if (isAdded()) Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
+            public void onError(String err) {
+                update(new ArrayList<>());
+                if (isAdded()) Toast.makeText(requireContext(), err, Toast.LENGTH_LONG).show();
             }
         });
     }
 
-    private void updateUI(final List<VmAdapter.Displayable> items) {
+    private void update(final List<VmAdapter.Displayable> list) {
         if (!isAdded()) return;
         requireActivity().runOnUiThread(() -> {
-            loadingProgress.setVisibility(View.GONE);
-            swipeRefresh.setRefreshing(false);
-            adapter.setItems(items);
-            emptyText.setVisibility(items.isEmpty() ? View.VISIBLE : View.GONE);
+            progress.setVisibility(View.GONE);
+            refresh.setRefreshing(false);
+            adapter.setItems(list);
+            empty.setVisibility(list.isEmpty() ? View.VISIBLE : View.GONE);
         });
     }
 
-    private void handleAction(VmAdapter.Displayable item) {
-        if (!(item instanceof IxAppInfo)) return;
-        IxAppInfo app = (IxAppInfo) item;
-        TrueNasRepository.ActionCallback callback = new TrueNasRepository.ActionCallback() {
+    private void onAction(VmAdapter.Displayable item) {
+        if (!(item instanceof IxAppInfo app)) return;
+        TrueNasRepository.ActionCallback cb = new TrueNasRepository.ActionCallback() {
             @Override
-            public void onDone(int messageResId) {
+            public void onDone(int resId) {
                 if (!isAdded()) return;
                 requireActivity().runOnUiThread(() -> {
-                    Toast.makeText(requireContext(), messageResId, Toast.LENGTH_SHORT).show();
-                    loadApps();
+                    Toast.makeText(requireContext(), resId, Toast.LENGTH_SHORT).show();
+                    fetch();
                 });
             }
 
             @Override
-            public void onError(String message) {
-                if (isAdded()) requireActivity().runOnUiThread(() -> Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show());
+            public void onError(String err) {
+                if (isAdded()) requireActivity().runOnUiThread(() -> Toast.makeText(requireContext(), err, Toast.LENGTH_LONG).show());
             }
         };
 
         if (app.isRunning()) {
-            repository.stopApp(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), app.getName(), callback);
+            repo.stopApp(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), app.getName(), cb);
         } else {
-            repository.startApp(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), app.getName(), callback);
+            repo.startApp(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), app.getName(), cb);
         }
     }
 }

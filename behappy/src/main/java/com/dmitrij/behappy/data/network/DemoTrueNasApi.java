@@ -24,8 +24,8 @@ public class DemoTrueNasApi implements TrueNasApi {
     private List<SmbShare> shares;
 
     private DemoTrueNasApi() {
-        initData();
-        prepopulateStats();
+        populateData();
+        initStats();
     }
 
     public static synchronized DemoTrueNasApi getInstance() {
@@ -35,7 +35,7 @@ public class DemoTrueNasApi implements TrueNasApi {
         return instance;
     }
 
-    private void initData() {
+    private void populateData() {
         services = gson.fromJson("[" +
                 "{\"service\":\"ssh\",\"state\":\"RUNNING\",\"id\":1}," +
                 "{\"service\":\"smb\",\"state\":\"RUNNING\",\"id\":2}," +
@@ -63,9 +63,9 @@ public class DemoTrueNasApi implements TrueNasApi {
                 "]", new TypeToken<List<SmbShare>>() {}.getType());
     }
 
-    private void prepopulateStats() {
+    private void initStats() {
         StatsManager stats = StatsManager.getInstance();
-        if (stats.getCpuHistory().isEmpty()) {
+        if (stats.getProcessorUsageList().isEmpty()) {
             for (int i = 0; i < 60; i++) {
                 stats.addCpuSample((float) (10 + Math.random() * 20));
                 stats.addRamSample((float) (40 + Math.random() * 5));
@@ -140,6 +140,18 @@ public class DemoTrueNasApi implements TrueNasApi {
     }
 
     @Override
+    public Call<List<NetworkInterface>> getNetworkInterfaces() {
+        return queryNetworkInterfaces(new ArrayList<>());
+    }
+
+    public Call<List<NetworkInterface>> queryNetworkInterfaces(List<Object> body) {
+        return new DemoCall<>(gson.fromJson("[" +
+                "{\"name\":\"enp0s31f6\",\"type\":\"LINK_AGGREGATION\",\"link_state\":\"LINK_STATE_UP\",\"aliases\":[{\"address\":\"192.168.1.100\",\"netmask\":24}]}," +
+                "{\"name\":\"lo\",\"type\":\"LOOPBACK\",\"link_state\":\"LINK_STATE_UP\",\"aliases\":[{\"address\":\"127.0.0.1\",\"netmask\":8}]}" +
+                "]", new TypeToken<List<NetworkInterface>>() {}.getType()));
+    }
+
+    @Override
     public Call<Map<String, Object>> getDiskDetails(String id) {
         return new DemoCall<>(new HashMap<>());
     }
@@ -150,21 +162,21 @@ public class DemoTrueNasApi implements TrueNasApi {
     }
 
     @Override
-    public Call<List<Map<String, Object>>> getReportingData(Map<String, Object> body) {
+    public Call<List<Map<String, Object>>> getReportingData(Object body) {
         return new DemoCall<>(new ArrayList<>());
     }
 
     @Override
     public Call<ResponseBody> startService(Map<String, Object> body) {
         String name = (String) body.get("service");
-        updateState(services, name, "RUNNING");
+        updateServiceState(services, name, "RUNNING");
         return new DemoCall<>(null);
     }
 
     @Override
     public Call<ResponseBody> stopService(Map<String, Object> body) {
         String name = (String) body.get("service");
-        updateState(services, name, "STOPPED");
+        updateServiceState(services, name, "STOPPED");
         return new DemoCall<>(null);
     }
 
@@ -181,14 +193,14 @@ public class DemoTrueNasApi implements TrueNasApi {
     }
 
     @Override
-    public Call<ResponseBody> startApp(String appName) {
-        updateAppState(appName, "RUNNING");
+    public Call<ResponseBody> startApp(String name) {
+        updateAppState(name, "RUNNING");
         return new DemoCall<>(null);
     }
 
     @Override
-    public Call<ResponseBody> stopApp(String appName) {
-        updateAppState(appName, "STOPPED");
+    public Call<ResponseBody> stopApp(String name) {
+        updateAppState(name, "STOPPED");
         return new DemoCall<>(null);
     }
 
@@ -234,8 +246,67 @@ public class DemoTrueNasApi implements TrueNasApi {
     }
 
     @Override
+    public Call<ResponseBody> updateNetworkInterface(String id, Map<String, Object> body) {
+        return new DemoCall<>(null);
+    }
+
+    @Override
+    public Call<ResponseBody> updateInterface(String id, Map<String, Object> body) {
+        return new DemoCall<>(null);
+    }
+
+    @Override
     public Call<ResponseBody> updateSystem(Map<String, Object> body) {
         return new DemoCall<>(null);
+    }
+
+    @Override
+    public Call<List<AuditEntry>> getAudits() {
+        return queryAudit(null);
+    }
+
+    public Call<List<AuditEntry>> queryAudit(Map<String, Object> body) {
+        String filter = null;
+        if (body != null && body.containsKey("services")) {
+            List<?> services = (List<?>) body.get("services");
+            if (services != null && services.size() == 1) {
+                filter = String.valueOf(services.get(0));
+            }
+        }
+        
+        if (filter == null && body != null && body.containsKey("query-filters")) {
+            List<?> filters = (List<?>) body.get("query-filters");
+            if (filters != null) {
+                for (Object item : filters) {
+                    if (item instanceof List) {
+                        List<?> list = (List<?>) item;
+                        if (list.size() >= 3 && "service".equals(list.get(0)) && "=".equals(list.get(1))) {
+                            filter = String.valueOf(list.get(2));
+                        }
+                    }
+                }
+            }
+        }
+
+        List<AuditEntry> all = gson.fromJson("[" +
+                "{\"service\":\"MIDDLEWARE\",\"user\":\"truenas_admin\",\"timestamp\":\"2026-05-27 19:56:03\",\"event\":\"Authentication\",\"event_data\":\"Credentials: Password login\"}," +
+                "{\"service\":\"MIDDLEWARE\",\"user\":\"truenas_admin\",\"timestamp\":\"2026-05-27 19:56:03\",\"event\":\"Call Method\",\"event_data\":\"Generate authentication token for session\"}," +
+                "{\"service\":\"SMB\",\"user\":\"truenas_admin\",\"timestamp\":\"2026-05-27 19:40:00\",\"event\":\"Connect\",\"event_data\":\"IP: 192.168.1.50\"}," +
+                "{\"service\":\"SUDO\",\"user\":\"root\",\"timestamp\":\"2026-05-27 19:30:15\",\"event\":\"Command\",\"event_data\":\"apt update\"}," +
+                "{\"service\":\"SYSTEM\",\"user\":\"system\",\"timestamp\":\"2026-05-27 19:00:00\",\"event\":\"Startup\",\"event_data\":\"System boot successful\"}" +
+                "]", new TypeToken<List<AuditEntry>>() {}.getType());
+
+        if (filter == null || filter.isEmpty() || "ALL".equalsIgnoreCase(filter)) {
+            return new DemoCall<>(all);
+        }
+
+        List<AuditEntry> result = new ArrayList<>();
+        for (AuditEntry entry : all) {
+            if (filter.equalsIgnoreCase(entry.getService())) {
+                result.add(entry);
+            }
+        }
+        return new DemoCall<>(result);
     }
 
     @Override
@@ -246,8 +317,29 @@ public class DemoTrueNasApi implements TrueNasApi {
             res.put("status", "AVAILABLE");
             res.put("version", "TrueNAS-SCALE-23.10.2");
             return new DemoCall<>(res);
+        } else if ("interface.query".equals(method)) {
+            return new DemoCall<>(gson.fromJson("[" +
+                "{\"name\":\"enp0s31f6\",\"type\":\"LINK_AGGREGATION\",\"link_state\":\"LINK_STATE_UP\",\"aliases\":[{\"address\":\"192.168.1.100\",\"netmask\":24}]}," +
+                "{\"name\":\"lo\",\"type\":\"LOOPBACK\",\"link_state\":\"LINK_STATE_UP\",\"aliases\":[{\"address\":\"127.0.0.1\",\"netmask\":8}]}" +
+                "]", new TypeToken<List<NetworkInterface>>() {}.getType()));
+        } else if ("audit.query".equals(method)) {
+            List<AuditEntry> all = gson.fromJson("[" +
+                "{\"service\":\"MIDDLEWARE\",\"user\":\"truenas_admin\",\"timestamp\":\"2026-05-27 19:56:03\",\"event\":\"Authentication\",\"event_data\":\"Credentials: Password login\"}," +
+                "{\"service\":\"MIDDLEWARE\",\"user\":\"truenas_admin\",\"timestamp\":\"2026-05-27 19:56:03\",\"event\":\"Call Method\",\"event_data\":\"Generate authentication token for session\"}," +
+                "{\"service\":\"SMB\",\"user\":\"truenas_admin\",\"timestamp\":\"2026-05-27 19:40:00\",\"event\":\"Connect\",\"event_data\":\"IP: 192.168.1.50\"}," +
+                "{\"service\":\"SUDO\",\"user\":\"root\",\"timestamp\":\"2026-05-27 19:30:15\",\"event\":\"Command\",\"event_data\":\"apt update\"}," +
+                "{\"service\":\"SYSTEM\",\"user\":\"system\",\"timestamp\":\"2026-05-27 19:00:00\",\"event\":\"Startup\",\"event_data\":\"System boot successful\"}" +
+                "]", new TypeToken<List<AuditEntry>>() {}.getType());
+            return new DemoCall<>(all);
         } else if ("chart.release.upgrade".equals(method)) {
             return new DemoCall<>(null);
+        } else if ("system.get_error_log".equals(method)) {
+            return new DemoCall<>("[2023-11-20 10:15:33] INFO: System startup complete\n" +
+                    "[2023-11-20 12:45:01] WARNING: High memory usage detected in Plex\n" +
+                    "[2023-11-21 03:00:10] INFO: Scheduled snapshot created for tank/media\n" +
+                    "[2023-11-22 09:22:45] INFO: SMB service restarted successfully\n" +
+                    "[2023-11-23 15:10:12] ERROR: Failed to connect to update server (timeout)\n" +
+                    "[2023-11-24 11:00:00] INFO: Periodic scrub started on boot-pool");
         }
         return new DemoCall<>(null);
     }
@@ -262,13 +354,13 @@ public class DemoTrueNasApi implements TrueNasApi {
         return new DemoCall<>(temps);
     }
 
-    private void updateState(List<ServiceInfo> list, String name, String state) {
-        for (ServiceInfo s : list) {
-            if (s.getService().equals(name)) {
+    private void updateServiceState(List<ServiceInfo> list, String name, String state) {
+        for (ServiceInfo item : list) {
+            if (item.getService().equals(name)) {
                 try {
-                    java.lang.reflect.Field f = ServiceInfo.class.getDeclaredField("state");
-                    f.setAccessible(true);
-                    f.set(s, state);
+                    java.lang.reflect.Field field = ServiceInfo.class.getDeclaredField("state");
+                    field.setAccessible(true);
+                    field.set(item, state);
                 } catch (Exception ignored) {}
                 break;
             }
@@ -276,15 +368,15 @@ public class DemoTrueNasApi implements TrueNasApi {
     }
 
     private void updateVmState(int id, String state) {
-        for (VmInfo v : vms) {
-            if (v.getId() == id) {
+        for (VmInfo item : vms) {
+            if (item.getId() == id) {
                 try {
-                    java.lang.reflect.Field statusField = VmInfo.class.getDeclaredField("status");
-                    statusField.setAccessible(true);
-                    Object status = statusField.get(v);
-                    java.lang.reflect.Field stateField = status.getClass().getDeclaredField("state");
-                    stateField.setAccessible(true);
-                    stateField.set(status, state);
+                    java.lang.reflect.Field field = VmInfo.class.getDeclaredField("status");
+                    field.setAccessible(true);
+                    Object status = field.get(item);
+                    java.lang.reflect.Field sField = status.getClass().getDeclaredField("state");
+                    sField.setAccessible(true);
+                    sField.set(status, state);
                 } catch (Exception ignored) {}
                 break;
             }
@@ -292,12 +384,12 @@ public class DemoTrueNasApi implements TrueNasApi {
     }
 
     private void updateAppState(String name, String state) {
-        for (IxAppInfo a : apps) {
-            if (a.getName().equals(name)) {
+        for (IxAppInfo item : apps) {
+            if (item.getName().equals(name)) {
                 try {
-                    java.lang.reflect.Field f = IxAppInfo.class.getDeclaredField("state");
-                    f.setAccessible(true);
-                    f.set(a, gson.toJsonTree(state));
+                    java.lang.reflect.Field field = IxAppInfo.class.getDeclaredField("state");
+                    field.setAccessible(true);
+                    field.set(item, gson.toJsonTree(state));
                 } catch (Exception ignored) {}
                 break;
             }

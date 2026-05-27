@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="main_bg">#202124</color>
+    <color name="card_bg">#2D2E31</color>
+    <color name="tg_blue">#8AB4F8</color>
+    <color name="tg_blue_dark">#669DF6</color>
+    <color name="tg_blue_light">#ADCCFF</color>
+    <color name="glass_white">#1AFFFFFF</color>
+    <color name="glass_white_heavy">#26FFFFFF</color>
+    <color name="accent_green">#81C995</color>
+    <color name="accent_red">#F28B82</color>
+    <color name="text_primary">#E8EAED</color>
+    <color name="text_secondary">#BDC1C6</color>
+</resources>

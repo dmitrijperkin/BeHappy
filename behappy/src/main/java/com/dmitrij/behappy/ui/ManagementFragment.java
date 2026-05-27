@@ -25,31 +25,51 @@ public class ManagementFragment extends Fragment {
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        TabLayout tabLayout = view.findViewById(R.id.tab_layout);
-        ViewPager2 viewPager = view.findViewById(R.id.view_pager);
+        TabLayout tabs = view.findViewById(R.id.tab_layout);
+        ViewPager2 pager = view.findViewById(R.id.view_pager);
 
-        viewPager.setAdapter(new FragmentStateAdapter(this) {
+        pager.setAdapter(new FragmentStateAdapter(this) {
             @NonNull
             @Override
-            public Fragment createFragment(int position) {
-                switch (position) {
+            public Fragment createFragment(int pos) {
+                switch (pos) {
                     case 0: return new ServicesFragment();
                     case 1: return new VmFragment();
-                    default: return new AppsFragment();
+                    case 2: return new AppsFragment();
+                    case 3: return new NetworkFragment();
+                    case 4: return new AuditFragment();
+                    default: return new LogsFragment();
                 }
             }
 
             @Override
             public int getItemCount() {
-                return 3;
+                return 5;
             }
         });
 
-        new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {
-            switch (position) {
-                case 0: tab.setText(R.string.nav_services); break;
-                case 1: tab.setText(R.string.nav_virtualization); break;
-                case 2: tab.setText(R.string.nav_apps); break;
+        new TabLayoutMediator(tabs, pager, (tab, pos) -> {
+            switch (pos) {
+                case 0: 
+                    tab.setText(R.string.nav_services);
+                    tab.setIcon(R.drawable.settings); 
+                    break;
+                case 1: 
+                    tab.setText(R.string.nav_virtualization);
+                    tab.setIcon(R.drawable.info);
+                    break;
+                case 2: 
+                    tab.setText(R.string.nav_apps);
+                    tab.setIcon(R.drawable.app);
+                    break;
+                case 3: 
+                    tab.setText(R.string.nav_network);
+                    tab.setIcon(R.drawable.report);
+                    break;
+                case 4: 
+                    tab.setText(R.string.nav_audit);
+                    tab.setIcon(R.drawable.terminal);
+                    break;
             }
         }).attach();
     }

@@ -17,6 +17,7 @@
 
         <item name="android:statusBarColor">?attr/colorSurface</item>
         <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowBackground">@drawable/main_gradient</item>
     </style>
 
     <style name="Theme.TrueNASManager" parent="Theme.BeHappy" />

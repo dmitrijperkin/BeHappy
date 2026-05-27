@@ -104,6 +104,46 @@
                     app:thumbTint="@color/tg_blue"
                     app:trackTint="@color/tg_blue_dark" />
 
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/label_ssh_creds"
+                    android:textColor="@color/tg_blue"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="@string/label_ssh_user"
+                    app:startIconDrawable="@android:drawable/ic_menu_myplaces">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/edit_ssh_user"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="root"
+                        android:textColor="@color/text_primary" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="@string/label_ssh_password"
+                    app:passwordToggleEnabled="true"
+                    app:startIconDrawable="@android:drawable/ic_lock_lock">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/edit_ssh_password"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textPassword"
+                        android:textColor="@color/text_primary" />
+                </com.google.android.material.textfield.TextInputLayout>
+
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

@@ -23,57 +23,56 @@ import com.dmitrij.behappy.security.SecurePrefs;
 import java.util.List;
 
 public class PoolsFragment extends Fragment {
-    private TrueNasRepository repository;
+    private TrueNasRepository repo;
     private SecurePrefs prefs;
     private PoolAdapter adapter;
-    private ProgressBar loadingProgress;
-    private SwipeRefreshLayout swipeRefresh;
-    private TextView emptyText;
+    private ProgressBar progress;
+    private SwipeRefreshLayout refresh;
+    private TextView empty;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_list, container, false);
         
-        repository = TrueNasRepository.getInstance();
+        repo = TrueNasRepository.getInstance();
         prefs = new SecurePrefs(requireContext());
         
-        RecyclerView recyclerView = view.findViewById(R.id.recycler_view);
-        loadingProgress = view.findViewById(R.id.loading_progress);
-        swipeRefresh = view.findViewById(R.id.swipe_refresh);
-        emptyText = view.findViewById(R.id.text_empty);
+        RecyclerView recycler = view.findViewById(R.id.recycler_view);
+        progress = view.findViewById(R.id.loading_progress);
+        refresh = view.findViewById(R.id.swipe_refresh);
+        empty = view.findViewById(R.id.text_empty);
         
-        recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        recycler.setLayoutManager(new LinearLayoutManager(requireContext()));
         adapter = new PoolAdapter();
-        adapter.setListener(this::showPoolDetail);
-        recyclerView.setAdapter(adapter);
+        adapter.setListener(this::onDetail);
+        recycler.setAdapter(adapter);
         
-        swipeRefresh.setOnRefreshListener(this::loadPools);
-        loadPools();
+        refresh.setOnRefreshListener(this::fetch);
+        fetch();
         
         return view;
     }
 
-    private void showPoolDetail(PoolInfo pool) {
+    private void onDetail(PoolInfo pool) {
         com.google.android.material.bottomsheet.BottomSheetDialog dialog = new com.google.android.material.bottomsheet.BottomSheetDialog(requireContext());
         View view = getLayoutInflater().inflate(R.layout.dialog_disk_detail, null);
         
         TextView title = view.findViewById(R.id.detail_title);
-        TextView percentageText = view.findViewById(R.id.detail_percentage);
-        ProgressBar progress = view.findViewById(R.id.detail_progress);
-        TextView info = view.findViewById(R.id.detail_info);
+        TextView pctTxt = view.findViewById(R.id.detail_percentage);
+        ProgressBar bar = view.findViewById(R.id.detail_progress);
+        TextView infoTxt = view.findViewById(R.id.detail_info);
         TextView extra = view.findViewById(R.id.detail_extra);
 
         title.setText(getString(R.string.label_pool_title, pool.getName()));
         
         long used = pool.getSize() - pool.getFree();
-        double pct = (double) used / pool.getSize() * 100.0;
-        if (pool.getSize() <= 0) pct = 0;
+        double pct = pool.getSize() <= 0 ? 0 : (double) used / pool.getSize() * 100.0;
 
-        percentageText.setText(getString(R.string.pool_used_pct, pct));
-        progress.setProgress((int) pct);
+        pctTxt.setText(getString(R.string.pool_used_pct, pct));
+        bar.setProgress((int) pct);
         
-        info.setText(getString(R.string.pool_usage_format, formatSize(used), formatSize(pool.getSize())));
+        infoTxt.setText(getString(R.string.pool_usage_format, formatSize(used), formatSize(pool.getSize())));
         
         StringBuilder sb = new StringBuilder();
         sb.append(getString(R.string.label_status_with_colon, pool.getHealthLabel())).append("\n");
@@ -87,27 +86,27 @@ public class PoolsFragment extends Fragment {
         }
         extra.setText(sb.toString());
 
-        com.google.android.material.button.MaterialButton scrubBtn = new com.google.android.material.button.MaterialButton(requireContext());
-        scrubBtn.setText(R.string.btn_start_scrub);
-        scrubBtn.setOnClickListener(v -> {
+        com.google.android.material.button.MaterialButton btn = new com.google.android.material.button.MaterialButton(requireContext());
+        btn.setText(R.string.btn_start_scrub);
+        btn.setOnClickListener(v -> {
             if (pool.getId() == null) {
                 Toast.makeText(requireContext(), R.string.err_pool_id_missing, Toast.LENGTH_SHORT).show();
                 return;
             }
-            repository.scrubPool(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), pool.getId(), new TrueNasRepository.ActionCallback() {
+            repo.scrubPool(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), pool.getId(), new TrueNasRepository.ActionCallback() {
                 @Override
-                public void onDone(int msgResId) {
-                    Toast.makeText(requireContext(), msgResId, Toast.LENGTH_SHORT).show();
+                public void onDone(int resId) {
+                    Toast.makeText(requireContext(), resId, Toast.LENGTH_SHORT).show();
                     dialog.dismiss();
                 }
                 @Override
-                public void onError(String msg) {
-                    Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show();
+                public void onError(String err) {
+                    Toast.makeText(requireContext(), err, Toast.LENGTH_LONG).show();
                 }
             });
         });
 
-        ((ViewGroup) view).addView(scrubBtn);
+        ((ViewGroup) view).addView(btn);
         dialog.setContentView(view);
         dialog.show();
     }
@@ -115,33 +114,33 @@ public class PoolsFragment extends Fragment {
     private String formatSize(long bytes) {
         if (bytes <= 0) return "0 B";
         final String[] units = new String[]{"B", "KB", "MB", "GB", "TB", "PB"};
-        int digitGroups = (int) (Math.log10(bytes) / Math.log10(1024));
-        return String.format(java.util.Locale.US, "%.1f %s", bytes / Math.pow(1024, digitGroups), units[digitGroups]);
+        int i = (int) (Math.log10(bytes) / Math.log10(1024));
+        return String.format(java.util.Locale.US, "%.1f %s", bytes / Math.pow(1024, i), units[i]);
     }
 
-    private void loadPools() {
-        loadingProgress.setVisibility(View.VISIBLE);
-        repository.fetchPoolsWithDatasets(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), new TrueNasRepository.PoolsCallback() {
+    private void fetch() {
+        progress.setVisibility(View.VISIBLE);
+        repo.fetchPoolsWithDatasets(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), new TrueNasRepository.PoolsCallback() {
             @Override
-            public void onSuccess(List<PoolInfo> info) {
+            public void onSuccess(List<PoolInfo> list) {
                 if (isAdded()) {
                     requireActivity().runOnUiThread(() -> {
-                        loadingProgress.setVisibility(View.GONE);
-                        swipeRefresh.setRefreshing(false);
-                        adapter.setPools(info);
-                        emptyText.setVisibility(info == null || info.isEmpty() ? View.VISIBLE : View.GONE);
+                        progress.setVisibility(View.GONE);
+                        refresh.setRefreshing(false);
+                        adapter.setPools(list);
+                        empty.setVisibility(list == null || list.isEmpty() ? View.VISIBLE : View.GONE);
                     });
                 }
             }
 
             @Override
-            public void onError(String message) {
+            public void onError(String err) {
                 if (isAdded()) {
                     requireActivity().runOnUiThread(() -> {
-                        loadingProgress.setVisibility(View.GONE);
-                        swipeRefresh.setRefreshing(false);
-                        emptyText.setVisibility(View.VISIBLE);
-                        Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
+                        progress.setVisibility(View.GONE);
+                        refresh.setRefreshing(false);
+                        empty.setVisibility(View.VISIBLE);
+                        Toast.makeText(requireContext(), err, Toast.LENGTH_LONG).show();
                     });
                 }
             }

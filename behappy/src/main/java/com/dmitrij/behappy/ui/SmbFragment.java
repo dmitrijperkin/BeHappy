@@ -23,12 +23,12 @@ import com.dmitrij.behappy.security.SecurePrefs;
 import java.util.List;
 
 public class SmbFragment extends Fragment {
-    private TrueNasRepository repository;
+    private TrueNasRepository repo;
     private SecurePrefs prefs;
     private SmbAdapter adapter;
-    private ProgressBar loadingProgress;
-    private SwipeRefreshLayout swipeRefresh;
-    private TextView emptyText;
+    private ProgressBar progress;
+    private SwipeRefreshLayout refresh;
+    private TextView empty;
 
     @Nullable
     @Override
@@ -40,65 +40,65 @@ public class SmbFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         
-        repository = TrueNasRepository.getInstance();
+        repo = TrueNasRepository.getInstance();
         prefs = new SecurePrefs(requireContext());
         
-        RecyclerView recyclerView = view.findViewById(R.id.recycler_view);
-        loadingProgress = view.findViewById(R.id.loading_progress);
-        swipeRefresh = view.findViewById(R.id.swipe_refresh);
-        emptyText = view.findViewById(R.id.text_empty);
+        RecyclerView recycler = view.findViewById(R.id.recycler_view);
+        progress = view.findViewById(R.id.loading_progress);
+        refresh = view.findViewById(R.id.swipe_refresh);
+        empty = view.findViewById(R.id.text_empty);
         
-        recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        recycler.setLayoutManager(new LinearLayoutManager(requireContext()));
         adapter = new SmbAdapter();
-        adapter.setOnSmbToggleListener(this::handleToggle);
-        recyclerView.setAdapter(adapter);
+        adapter.setListener(this::onToggle);
+        recycler.setAdapter(adapter);
         
-        swipeRefresh.setOnRefreshListener(this::loadShares);
-        loadShares();
+        refresh.setOnRefreshListener(this::fetch);
+        fetch();
     }
 
-    private void loadShares() {
-        if (loadingProgress != null) loadingProgress.setVisibility(View.VISIBLE);
-        repository.fetchSmbShares(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), new TrueNasRepository.SmbCallback() {
+    private void fetch() {
+        if (progress != null) progress.setVisibility(View.VISIBLE);
+        repo.fetchSmbShares(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), new TrueNasRepository.SmbCallback() {
             @Override
-            public void onSuccess(List<SmbShare> info) {
+            public void onSuccess(List<SmbShare> list) {
                 if (isAdded() && getView() != null) {
-                    if (loadingProgress != null) loadingProgress.setVisibility(View.GONE);
-                    if (swipeRefresh != null) swipeRefresh.setRefreshing(false);
-                    if (adapter != null) adapter.setShares(info);
-                    if (emptyText != null) {
-                        emptyText.setVisibility(info == null || info.isEmpty() ? View.VISIBLE : View.GONE);
+                    if (progress != null) progress.setVisibility(View.GONE);
+                    if (refresh != null) refresh.setRefreshing(false);
+                    if (adapter != null) adapter.setItems(list);
+                    if (empty != null) {
+                        empty.setVisibility(list == null || list.isEmpty() ? View.VISIBLE : View.GONE);
                     }
                 }
             }
 
             @Override
-            public void onError(String message) {
+            public void onError(String err) {
                 if (isAdded() && getView() != null) {
-                    if (loadingProgress != null) loadingProgress.setVisibility(View.GONE);
-                    if (swipeRefresh != null) swipeRefresh.setRefreshing(false);
-                    if (emptyText != null) emptyText.setVisibility(View.VISIBLE);
-                    Toast.makeText(getContext(), message, Toast.LENGTH_LONG).show();
+                    if (progress != null) progress.setVisibility(View.GONE);
+                    if (refresh != null) refresh.setRefreshing(false);
+                    if (empty != null) empty.setVisibility(View.VISIBLE);
+                    Toast.makeText(getContext(), err, Toast.LENGTH_LONG).show();
                 }
             }
         });
     }
 
-    private void handleToggle(SmbShare share, boolean isEnabled) {
-        repository.toggleSmbShare(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), share.getId(), isEnabled, new TrueNasRepository.ActionCallback() {
+    private void onToggle(SmbShare item, boolean en) {
+        repo.toggleSmbShare(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), item.getId(), en, new TrueNasRepository.ActionCallback() {
             @Override
-            public void onDone(int messageResId) {
+            public void onDone(int resId) {
                 if (isAdded()) {
-                    Toast.makeText(getContext(), messageResId, Toast.LENGTH_SHORT).show();
-                    loadShares();
+                    Toast.makeText(getContext(), resId, Toast.LENGTH_SHORT).show();
+                    fetch();
                 }
             }
 
             @Override
-            public void onError(String message) {
+            public void onError(String err) {
                 if (isAdded()) {
-                    Toast.makeText(getContext(), message, Toast.LENGTH_LONG).show();
-                    loadShares();
+                    Toast.makeText(getContext(), err, Toast.LENGTH_LONG).show();
+                    fetch();
                 }
             }
         });

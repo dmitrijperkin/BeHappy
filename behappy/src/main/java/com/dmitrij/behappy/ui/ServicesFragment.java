@@ -23,12 +23,12 @@ import com.dmitrij.behappy.security.SecurePrefs;
 import java.util.List;
 
 public class ServicesFragment extends Fragment {
-    private TrueNasRepository repository;
+    private TrueNasRepository repo;
     private SecurePrefs prefs;
     private ServiceAdapter adapter;
-    private ProgressBar loadingProgress;
-    private SwipeRefreshLayout swipeRefresh;
-    private TextView emptyText;
+    private ProgressBar progress;
+    private SwipeRefreshLayout refresh;
+    private TextView empty;
 
     @Nullable
     @Override
@@ -40,82 +40,82 @@ public class ServicesFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         
-        repository = TrueNasRepository.getInstance();
+        repo = TrueNasRepository.getInstance();
         prefs = new SecurePrefs(requireContext());
         
-        RecyclerView recyclerView = view.findViewById(R.id.recycler_view);
-        loadingProgress = view.findViewById(R.id.loading_progress);
-        swipeRefresh = view.findViewById(R.id.swipe_refresh);
-        emptyText = view.findViewById(R.id.text_empty);
+        RecyclerView recycler = view.findViewById(R.id.recycler_view);
+        progress = view.findViewById(R.id.loading_progress);
+        refresh = view.findViewById(R.id.swipe_refresh);
+        empty = view.findViewById(R.id.text_empty);
         
-        recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        recycler.setLayoutManager(new LinearLayoutManager(requireContext()));
         adapter = new ServiceAdapter();
-        adapter.setOnServiceActionListener(this::handleServiceAction);
-        recyclerView.setAdapter(adapter);
+        adapter.setListener(this::onAction);
+        recycler.setAdapter(adapter);
         
-        swipeRefresh.setOnRefreshListener(this::loadServices);
-        loadServices();
+        refresh.setOnRefreshListener(this::fetch);
+        fetch();
     }
 
-    private void loadServices() {
-        if (loadingProgress != null) loadingProgress.setVisibility(View.VISIBLE);
-        repository.fetchServices(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), new TrueNasRepository.ServicesCallback() {
+    private void fetch() {
+        if (progress != null) progress.setVisibility(View.VISIBLE);
+        repo.fetchServices(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), new TrueNasRepository.ServicesCallback() {
             @Override
-            public void onSuccess(List<ServiceInfo> info) {
+            public void onSuccess(List<ServiceInfo> list) {
                 if (isAdded() && getView() != null) {
-                    if (loadingProgress != null) loadingProgress.setVisibility(View.GONE);
-                    if (swipeRefresh != null) swipeRefresh.setRefreshing(false);
-                    if (adapter != null) adapter.setServices(info);
-                    if (emptyText != null) {
-                        emptyText.setVisibility(info == null || info.isEmpty() ? View.VISIBLE : View.GONE);
+                    if (progress != null) progress.setVisibility(View.GONE);
+                    if (refresh != null) refresh.setRefreshing(false);
+                    if (adapter != null) adapter.setServices(list);
+                    if (empty != null) {
+                        empty.setVisibility(list == null || list.isEmpty() ? View.VISIBLE : View.GONE);
                     }
                 }
             }
 
             @Override
-            public void onError(String message) {
+            public void onError(String err) {
                 if (isAdded() && getView() != null) {
-                    if (loadingProgress != null) loadingProgress.setVisibility(View.GONE);
-                    if (swipeRefresh != null) swipeRefresh.setRefreshing(false);
-                    if (emptyText != null) emptyText.setVisibility(View.VISIBLE);
-                    Toast.makeText(getContext(), message, Toast.LENGTH_LONG).show();
+                    if (progress != null) progress.setVisibility(View.GONE);
+                    if (refresh != null) refresh.setRefreshing(false);
+                    if (empty != null) empty.setVisibility(View.VISIBLE);
+                    Toast.makeText(getContext(), err, Toast.LENGTH_LONG).show();
                 }
             }
         });
     }
 
-    private void handleServiceAction(ServiceInfo service) {
-        boolean isRunning = "RUNNING".equalsIgnoreCase(service.getState());
-        TrueNasRepository.ActionCallback callback = new TrueNasRepository.ActionCallback() {
+    private void onAction(ServiceInfo info) {
+        boolean active = "RUNNING".equalsIgnoreCase(info.getState());
+        TrueNasRepository.ActionCallback cb = new TrueNasRepository.ActionCallback() {
             @Override
-            public void onDone(int messageResId) {
+            public void onDone(int resId) {
                 if (isAdded() && getView() != null) {
-                    Toast.makeText(getContext(), messageResId, Toast.LENGTH_SHORT).show();
-                    loadServices();
+                    Toast.makeText(getContext(), resId, Toast.LENGTH_SHORT).show();
+                    fetch();
                 }
             }
 
             @Override
-            public void onError(String message) {
+            public void onError(String err) {
                 if (isAdded() && getView() != null) {
-                    Toast.makeText(getContext(), message, Toast.LENGTH_LONG).show();
+                    Toast.makeText(getContext(), err, Toast.LENGTH_LONG).show();
                 }
             }
         };
 
-        if (isRunning) {
-            repository.stopService(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), service, callback);
+        if (active) {
+            repo.stopService(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), info, cb);
         } else {
-            repository.startService(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), service, callback);
+            repo.startService(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), info, cb);
         }
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        loadingProgress = null;
-        swipeRefresh = null;
-        emptyText = null;
+        progress = null;
+        refresh = null;
+        empty = null;
         adapter = null;
     }
 }

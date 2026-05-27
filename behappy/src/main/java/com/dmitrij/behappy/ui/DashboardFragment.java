@@ -29,19 +29,19 @@ import java.util.List;
 import java.util.Locale;
 
 public class DashboardFragment extends Fragment {
-    private TrueNasRepository repository;
+    private TrueNasRepository repo;
     private SecurePrefs prefs;
-    private TextView cpuText, ramText, poolsText, uptimeText, versionText, statusText, cpuModelText, ramTotalText;
+    private TextView cpuTxt, ramTxt, poolsTxt, uptimeTxt, versionTxt, statusTxt, cpuModelTxt, ramTotalTxt;
     private ProgressBar cpuProgress, ramProgress;
-    private SwipeRefreshLayout swipeRefresh;
-    private AlertAdapter alertAdapter;
+    private SwipeRefreshLayout refresh;
+    private AlertAdapter adapter;
 
-    private final Handler refreshHandler = new Handler(Looper.getMainLooper());
-    private final Runnable refreshRunnable = new Runnable() {
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable updateTask = new Runnable() {
         @Override
         public void run() {
-            refreshData(true);
-            refreshHandler.postDelayed(this, 5000);
+            refresh(true);
+            handler.postDelayed(this, 5000);
         }
     };
 
@@ -50,35 +50,32 @@ public class DashboardFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_dashboard, container, false);
         
-        repository = TrueNasRepository.getInstance();
+        repo = TrueNasRepository.getInstance();
         prefs = new SecurePrefs(requireContext());
 
-        uptimeText = view.findViewById(R.id.text_uptime);
-        versionText = view.findViewById(R.id.text_version);
-        poolsText = view.findViewById(R.id.text_pools);
-        cpuText = view.findViewById(R.id.text_cpu);
-        ramText = view.findViewById(R.id.text_ram);
-        statusText = view.findViewById(R.id.text_status);
+        uptimeTxt = view.findViewById(R.id.text_uptime);
+        versionTxt = view.findViewById(R.id.text_version);
+        poolsTxt = view.findViewById(R.id.text_pools);
+        cpuTxt = view.findViewById(R.id.text_cpu);
+        ramTxt = view.findViewById(R.id.text_ram);
+        statusTxt = view.findViewById(R.id.text_status);
         cpuProgress = view.findViewById(R.id.progress_cpu);
         ramProgress = view.findViewById(R.id.progress_ram);
-        swipeRefresh = view.findViewById(R.id.swipe_refresh);
-        cpuModelText = view.findViewById(R.id.text_cpu_model);
-        ramTotalText = view.findViewById(R.id.text_ram_total);
+        refresh = view.findViewById(R.id.swipe_refresh);
+        cpuModelTxt = view.findViewById(R.id.text_cpu_model);
+        ramTotalTxt = view.findViewById(R.id.text_ram_total);
 
-        View cpuCard = view.findViewById(R.id.card_cpu);
-        View ramCard = view.findViewById(R.id.card_ram);
+        view.findViewById(R.id.card_cpu).setOnClickListener(v -> openStats(StatsDetailActivity.TYPE_CPU));
+        view.findViewById(R.id.card_ram).setOnClickListener(v -> openStats(StatsDetailActivity.TYPE_RAM));
 
-        cpuCard.setOnClickListener(v -> openStats(StatsDetailActivity.TYPE_CPU));
-        ramCard.setOnClickListener(v -> openStats(StatsDetailActivity.TYPE_RAM));
+        RecyclerView recycler = view.findViewById(R.id.recycler_alerts);
+        recycler.setLayoutManager(new LinearLayoutManager(requireContext()));
+        adapter = new AlertAdapter();
+        recycler.setAdapter(adapter);
 
-        RecyclerView alertRecycler = view.findViewById(R.id.recycler_alerts);
-        alertRecycler.setLayoutManager(new LinearLayoutManager(requireContext()));
-        alertAdapter = new AlertAdapter();
-        alertRecycler.setAdapter(alertAdapter);
-
-        swipeRefresh.setOnRefreshListener(() -> refreshData(false));
+        refresh.setOnRefreshListener(() -> refresh(false));
         
-        refreshData(false);
+        refresh(false);
 
         return view;
     }
@@ -86,13 +83,13 @@ public class DashboardFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        refreshHandler.postDelayed(refreshRunnable, 5000);
+        handler.postDelayed(updateTask, 5000);
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        refreshHandler.removeCallbacks(refreshRunnable);
+        handler.removeCallbacks(updateTask);
     }
 
     private void openStats(String type) {
@@ -101,48 +98,43 @@ public class DashboardFragment extends Fragment {
         startActivity(intent);
     }
 
-    private void refreshData(boolean silent) {
+    private void refresh(boolean silent) {
         if (prefs.getHost().isEmpty() || prefs.getApiKey().isEmpty()) {
-            statusText.setVisibility(View.VISIBLE);
-            statusText.setText(R.string.error_missing_settings);
-            swipeRefresh.setRefreshing(false);
+            statusTxt.setVisibility(View.VISIBLE);
+            statusTxt.setText(R.string.error_missing_settings);
+            refresh.setRefreshing(false);
             return;
         }
 
-        statusText.setVisibility(View.GONE);
-        if (!silent) swipeRefresh.setRefreshing(true);
+        statusTxt.setVisibility(View.GONE);
+        if (!silent) refresh.setRefreshing(true);
 
-        loadSystemInfo(silent);
-        loadUsage();
-        loadAlerts(silent);
-        loadPoolsCount();
-        loadNetworkUsage();
+        fetchStatus(silent);
+        fetchUsage();
+        fetchAlerts(silent);
+        fetchPools();
+        fetchNetwork();
     }
 
-    private void loadNetworkUsage() {
-        repository.fetchNetworkUsage(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), data -> {
-            if (isAdded()) {
-                requireActivity().runOnUiThread(() -> {
-                });
-            }
-        }, msg -> {});
+    private void fetchNetwork() {
+        repo.fetchNetworkUsage(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), net -> {}, err -> {});
     }
 
-    private void loadSystemInfo(boolean silent) {
-        repository.fetchSystemInfo(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), new TrueNasRepository.SystemInfoCallback() {
+    private void fetchStatus(boolean silent) {
+        repo.fetchSystemInfo(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), new TrueNasRepository.SystemInfoCallback() {
             @Override
-            public void onSuccess(SystemInfo i) {
+            public void onSuccess(SystemInfo info) {
                 if (isAdded()) {
                     requireActivity().runOnUiThread(() -> {
-                        uptimeText.setText(formatUptime(i.getUptime()));
-                        versionText.setText(i.getVersion());
-                        if (!silent) swipeRefresh.setRefreshing(false);
+                        uptimeTxt.setText(formatUptime(info.getUptime()));
+                        versionTxt.setText(info.getVersion());
+                        if (!silent) refresh.setRefreshing(false);
                     });
                 }
             }
-            @Override public void onError(String m) {
+            @Override public void onError(String err) {
                 if (isAdded() && !silent) {
-                    requireActivity().runOnUiThread(() -> swipeRefresh.setRefreshing(false));
+                    requireActivity().runOnUiThread(() -> refresh.setRefreshing(false));
                 }
             }
         });
@@ -152,26 +144,23 @@ public class DashboardFragment extends Fragment {
         if (raw == null || raw.equals("unknown")) return raw;
         try {
             String clean = raw.split("\\.")[0];
-            String days = "";
-            String timePart = clean;
+            String d = "";
+            String t = clean;
 
             if (clean.contains("day")) {
-                String[] parts = clean.split(",");
-                days = parts[0].replace("days", "д").replace("day", "д").trim() + " ";
-                if (parts.length > 1) {
-                    timePart = parts[1].trim();
-                } else {
-                    return days.trim();
-                }
+                String[] p = clean.split(",");
+                d = p[0].replace("days", "д").replace("day", "д").trim() + " ";
+                if (p.length > 1) t = p[1].trim();
+                else return d.trim();
             }
 
-            String[] time = timePart.split(":");
-            if (time.length == 3) {
-                int h = Integer.parseInt(time[0]);
-                int m = Integer.parseInt(time[1]);
-                int s = Integer.parseInt(time[2]);
+            String[] c = t.split(":");
+            if (c.length == 3) {
+                int h = Integer.parseInt(c[0]);
+                int m = Integer.parseInt(c[1]);
+                int s = Integer.parseInt(c[2]);
                 
-                StringBuilder sb = new StringBuilder(days);
+                StringBuilder sb = new StringBuilder(d);
                 if (h > 0) sb.append(h).append("ч ");
                 if (m > 0 || h > 0) sb.append(m).append("м ");
                 sb.append(s).append("с");
@@ -183,70 +172,70 @@ public class DashboardFragment extends Fragment {
         }
     }
 
-    private void loadUsage() {
-        repository.fetchUsage(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), new TrueNasRepository.UsageCallback() {
+    private void fetchUsage() {
+        repo.fetchUsage(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), new TrueNasRepository.UsageCallback() {
             @Override
-            public void onSuccess(UsageInfo i) {
+            public void onSuccess(UsageInfo info) {
                 if (isAdded()) {
-                    StatsManager.getInstance().addCpuSample((float) i.getCpuPercent());
-                    StatsManager.getInstance().addRamSample((float) i.getRamPercent());
+                    StatsManager.getInstance().addCpuSample((float) info.getCpuPercent());
+                    StatsManager.getInstance().addRamSample((float) info.getRamPercent());
 
                     requireActivity().runOnUiThread(() -> {
-                        cpuText.setText(String.format(Locale.getDefault(), "%.1f%%", i.getCpuPercent()));
-                        cpuProgress.setProgress((int) i.getCpuPercent());
-                        ramText.setText(String.format(Locale.getDefault(), "%.1f%%", i.getRamPercent()));
-                        ramProgress.setProgress((int) i.getRamPercent());
+                        cpuTxt.setText(String.format(Locale.getDefault(), "%.1f%%", info.getCpuPercent()));
+                        cpuProgress.setProgress((int) info.getCpuPercent());
+                        ramTxt.setText(String.format(Locale.getDefault(), "%.1f%%", info.getRamPercent()));
+                        ramProgress.setProgress((int) info.getRamPercent());
 
-                        if (i.getCpuModel() != null) cpuModelText.setText(i.getCpuModel());
-                        if (i.getTotalMemory() > 0) ramTotalText.setText(formatSize(i.getTotalMemory()));
+                        if (info.getCpuModel() != null) cpuModelTxt.setText(info.getCpuModel());
+                        if (info.getTotalMemory() > 0) ramTotalTxt.setText(formatSize(info.getTotalMemory()));
                     });
                 }
             }
-            @Override public void onError(String m) {}
+            @Override public void onError(String err) {}
         });
     }
 
     private String formatSize(long bytes) {
         if (bytes <= 0) return "0 B";
         final String[] units = new String[]{"B", "KB", "MB", "GB", "TB", "PB"};
-        int digitGroups = (int) (Math.log10(bytes) / Math.log10(1024));
-        return String.format(Locale.US, "%.1f %s", bytes / Math.pow(1024, digitGroups), units[digitGroups]);
+        int i = (int) (Math.log10(bytes) / Math.log10(1024));
+        return String.format(Locale.US, "%.1f %s", bytes / Math.pow(1024, i), units[i]);
     }
 
-    private void loadAlerts(boolean silent) {
-        repository.fetchAlerts(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), new TrueNasRepository.AlertsCallback() {
+    private void fetchAlerts(boolean silent) {
+        repo.fetchAlerts(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), new TrueNasRepository.AlertsCallback() {
             @Override
-            public void onSuccess(List<AlertInfo> alerts) {
+            public void onSuccess(List<AlertInfo> list) {
                 if (isAdded()) {
                     requireActivity().runOnUiThread(() -> {
-                        alertAdapter.setAlerts(alerts);
-                        if (!silent) swipeRefresh.setRefreshing(false);
+                        adapter.setAlerts(list);
+                        if (!silent) refresh.setRefreshing(false);
                     });
                 }
             }
 
             @Override
-            public void onError(String m) {
+            public void onError(String err) {
                 if (isAdded()) {
                     requireActivity().runOnUiThread(() -> {
-                        if (!silent) swipeRefresh.setRefreshing(false);
-                        statusText.setVisibility(View.VISIBLE);
-                        statusText.setText(m);
+                        if (!silent) refresh.setRefreshing(false);
+                        statusTxt.setVisibility(View.VISIBLE);
+                        statusTxt.setText(err);
                     });
                 }
             }
         });
     }
 
-    private void loadPoolsCount() {
-        repository.fetchPools(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), new TrueNasRepository.PoolsCallback() {
+    private void fetchPools() {
+        repo.fetchPools(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), new TrueNasRepository.PoolsCallback() {
             @Override
-            public void onSuccess(java.util.List<com.dmitrij.behappy.model.PoolInfo> info) {
+            public void onSuccess(List<com.dmitrij.behappy.model.PoolInfo> list) {
                 if (isAdded()) {
-                    requireActivity().runOnUiThread(() -> poolsText.setText(getString(R.string.status_pools, info == null ? 0 : info.size())));
+                    requireActivity().runOnUiThread(() -> poolsTxt.setText(getString(R.string.status_pools, list == null ? 0 : list.size())));
                 }
             }
-            @Override public void onError(String m) {}
+            @Override public void onError(String err) {}
         });
     }
 }

@@ -19,14 +19,12 @@ import com.dmitrij.behappy.R;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.color.DynamicColors;
 
-public class MainActivity extends AppCompatActivity {
-    private ViewPager2 viewPager;
-    private BottomNavigationView bottomNav;
+public class MainActivity extends BaseActivity {
+    private ViewPager2 pager;
+    private BottomNavigationView nav;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
-        DynamicColors.applyToActivitiesIfAvailable(this.getApplication());
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -38,8 +36,8 @@ public class MainActivity extends AppCompatActivity {
             getSupportActionBar().setDisplayShowHomeEnabled(false);
         }
 
-        viewPager = findViewById(R.id.view_pager);
-        bottomNav = findViewById(R.id.bottom_navigation);
+        pager = findViewById(R.id.view_pager);
+        nav = findViewById(R.id.bottom_navigation);
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -49,45 +47,50 @@ public class MainActivity extends AppCompatActivity {
 
         com.dmitrij.behappy.widget.WidgetRefreshWorker.enqueue(this);
 
-        viewPager.setAdapter(new FragmentStateAdapter(this) {
+        pager.setAdapter(new FragmentStateAdapter(this) {
             @NonNull
             @Override
-            public Fragment createFragment(int position) {
-                switch (position) {
+            public Fragment createFragment(int i) {
+                switch (i) {
                     case 0: return new DashboardFragment();
                     case 1: return new StorageFragment();
                     case 2: return new ManagementFragment();
+                    case 3: return new SshFragment();
                     default: return new DashboardFragment();
                 }
             }
 
             @Override
             public int getItemCount() {
-                return 3;
+                return 4;
             }
         });
 
-        viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+        pager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
-            public void onPageSelected(int position) {
-                switch (position) {
-                    case 0: bottomNav.setSelectedItemId(R.id.nav_dashboard); break;
-                    case 1: bottomNav.setSelectedItemId(R.id.nav_storage); break;
-                    case 2: bottomNav.setSelectedItemId(R.id.nav_management); break;
+            public void onPageSelected(int i) {
+                switch (i) {
+                    case 0: nav.setSelectedItemId(R.id.nav_dashboard); break;
+                    case 1: nav.setSelectedItemId(R.id.nav_storage); break;
+                    case 2: nav.setSelectedItemId(R.id.nav_management); break;
+                    case 3: nav.setSelectedItemId(R.id.nav_ssh); break;
                 }
             }
         });
 
-        bottomNav.setOnItemSelectedListener(item -> {
+        nav.setOnItemSelectedListener(item -> {
             int id = item.getItemId();
             if (id == R.id.nav_dashboard) {
-                viewPager.setCurrentItem(0);
+                pager.setCurrentItem(0);
                 return true;
             } else if (id == R.id.nav_storage) {
-                viewPager.setCurrentItem(1);
+                pager.setCurrentItem(1);
                 return true;
             } else if (id == R.id.nav_management) {
-                viewPager.setCurrentItem(2);
+                pager.setCurrentItem(2);
+                return true;
+            } else if (id == R.id.nav_ssh) {
+                pager.setCurrentItem(3);
                 return true;
             }
             return false;
@@ -97,9 +100,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(android.view.Menu menu) {
         getMenuInflater().inflate(R.menu.main_menu, menu);
-        android.view.MenuItem settingsItem = menu.findItem(R.id.action_settings);
-        if (settingsItem != null && settingsItem.getIcon() != null) {
-            settingsItem.getIcon().setTint(androidx.core.content.ContextCompat.getColor(this, R.color.tg_blue));
+        android.view.MenuItem settings = menu.findItem(R.id.action_settings);
+        if (settings != null && settings.getIcon() != null) {
+            settings.getIcon().setTint(androidx.core.content.ContextCompat.getColor(this, R.color.tg_blue));
         }
         return true;
     }
@@ -107,14 +110,12 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(android.view.MenuItem item) {
         if (item.getItemId() == R.id.action_settings) {
-            
             getSupportFragmentManager().beginTransaction()
                     .add(android.R.id.content, new SettingsFragment(), "settings")
                     .addToBackStack(null)
                     .commit();
-            
-            bottomNav.setVisibility(View.GONE);
-            viewPager.setVisibility(View.GONE);
+            nav.setVisibility(View.GONE);
+            pager.setVisibility(View.GONE);
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -124,8 +125,8 @@ public class MainActivity extends AppCompatActivity {
     public void onBackPressed() {
         if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
             getSupportFragmentManager().popBackStack();
-            bottomNav.setVisibility(View.VISIBLE);
-            viewPager.setVisibility(View.VISIBLE);
+            nav.setVisibility(View.VISIBLE);
+            pager.setVisibility(View.VISIBLE);
         } else {
             super.onBackPressed();
         }

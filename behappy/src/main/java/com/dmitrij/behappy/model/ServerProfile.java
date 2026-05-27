@@ -3,32 +3,43 @@ package com.dmitrij.behappy.model;
 import java.util.UUID;
 
 public class ServerProfile {
-    private String id;
-    private String name;
-    private String host;
-    private String apiKey;
-    private boolean allowSelfSigned;
+    private String profileIdentifier;
+    private String profileName;
+    private String serverAddress;
+    private String apiToken;
+    private boolean ignoreSslErrors;
+    private String sshUsername;
+    private String sshSecret;
+    private int sshPortNumber = 22;
 
-    public ServerProfile(String name, String host, String apiKey, boolean allowSelfSigned) {
-        this.id = UUID.randomUUID().toString();
-        this.name = name;
-        this.host = host;
-        this.apiKey = apiKey;
-        this.allowSelfSigned = allowSelfSigned;
+    public ServerProfile(String initialName, String initialHost, String initialToken, boolean shouldIgnoreSsl) {
+        profileIdentifier = UUID.randomUUID().toString();
+        profileName = initialName;
+        serverAddress = initialHost;
+        apiToken = initialToken;
+        ignoreSslErrors = shouldIgnoreSsl;
+        sshUsername = "root";
+        sshSecret = "";
     }
 
-    public String getId() { return id; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public String getHost() { return host; }
-    public void setHost(String host) { this.host = host; }
-    public String getApiKey() { return apiKey; }
-    public void setApiKey(String apiKey) { this.apiKey = apiKey; }
-    public boolean isAllowSelfSigned() { return allowSelfSigned; }
-    public void setAllowSelfSigned(boolean allowSelfSigned) { this.allowSelfSigned = allowSelfSigned; }
+    public String getId() { return profileIdentifier; }
+    public String getName() { return profileName; }
+    public void setName(String newName) { profileName = newName; }
+    public String getHost() { return serverAddress; }
+    public void setHost(String newHost) { serverAddress = newHost; }
+    public String getApiKey() { return apiToken; }
+    public void setApiKey(String newToken) { apiToken = newToken; }
+    public boolean isAllowSelfSigned() { return ignoreSslErrors; }
+    public void setAllowSelfSigned(boolean newState) { ignoreSslErrors = newState; }
+    public String getSshUser() { return sshUsername; }
+    public void setSshUser(String newUser) { sshUsername = newUser; }
+    public String getSshPassword() { return sshSecret; }
+    public void setSshPassword(String newSecret) { sshSecret = newSecret; }
+    public int getSshPort() { return sshPortNumber; }
+    public void setSshPort(int newPort) { sshPortNumber = newPort; }
 
     @Override
     public String toString() {
-        return name;
+        return profileName;
     }
 }

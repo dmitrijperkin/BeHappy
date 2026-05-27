@@ -6,7 +6,7 @@ import java.util.List;
 
 public class StatsManager {
     private static StatsManager instance;
-    private static final int MAX_SAMPLES = 60;
+    private static final int MAX = 60;
 
     private final LinkedList<Float> cpuHistory = new LinkedList<>();
     private final LinkedList<Float> ramHistory = new LinkedList<>();
@@ -20,14 +20,14 @@ public class StatsManager {
         return instance;
     }
 
-    public synchronized void addCpuSample(float value) {
-        cpuHistory.add(value);
-        if (cpuHistory.size() > MAX_SAMPLES) cpuHistory.removeFirst();
+    public synchronized void addCpuSample(float val) {
+        cpuHistory.add(val);
+        if (cpuHistory.size() > MAX) cpuHistory.removeFirst();
     }
 
-    public synchronized void addRamSample(float value) {
-        ramHistory.add(value);
-        if (ramHistory.size() > MAX_SAMPLES) ramHistory.removeFirst();
+    public synchronized void addRamSample(float val) {
+        ramHistory.add(val);
+        if (ramHistory.size() > MAX) ramHistory.removeFirst();
     }
 
     public synchronized List<Float> getCpuHistory() {
@@ -36,5 +36,13 @@ public class StatsManager {
 
     public synchronized List<Float> getRamHistory() {
         return new ArrayList<>(ramHistory);
+    }
+
+    public synchronized List<Float> getProcessorUsageList() {
+        return getCpuHistory();
+    }
+
+    public synchronized List<Float> getMemoryUsageList() {
+        return getRamHistory();
     }
 }

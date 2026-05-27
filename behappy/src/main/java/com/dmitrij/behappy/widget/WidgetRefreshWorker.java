@@ -19,84 +19,84 @@ import java.util.concurrent.TimeUnit;
 
 public class WidgetRefreshWorker extends Worker {
 
-    public WidgetRefreshWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
-        super(context, workerParams);
+    public WidgetRefreshWorker(@NonNull Context appContext, @NonNull WorkerParameters refreshWorkerParameters) {
+        super(appContext, refreshWorkerParameters);
     }
 
-    public static void enqueue(Context context) {
-        OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(WidgetRefreshWorker.class)
+    public static void enqueue(Context appContext) {
+        OneTimeWorkRequest refreshWorkRequest = new OneTimeWorkRequest.Builder(WidgetRefreshWorker.class)
                 .setInitialDelay(5, TimeUnit.MINUTES)
                 .build();
         
-        WorkManager.getInstance(context).enqueueUniqueWork(
+        WorkManager.getInstance(appContext).enqueueUniqueWork(
                 "WidgetRefreshLoop",
                 ExistingWorkPolicy.REPLACE,
-                request
+                refreshWorkRequest
         );
     }
 
     @NonNull
     @Override
     public Result doWork() {
-        Context context = getApplicationContext();
+        Context appContext = getApplicationContext();
         
-        checkAlerts(context);
-        updateWidget(context, StatusWidget.class);
-        updateWidget(context, CpuWidget.class);
-        updateWidget(context, RamWidget.class);
+        processSystemAlerts(appContext);
+        refreshWidgetComponent(appContext, StatusWidget.class);
+        refreshWidgetComponent(appContext, CpuWidget.class);
+        refreshWidgetComponent(appContext, RamWidget.class);
 
-        enqueue(context);
+        enqueue(appContext);
         return Result.success();
     }
 
-    private void checkAlerts(Context context) {
-        com.dmitrij.behappy.security.SecurePrefs prefs = new com.dmitrij.behappy.security.SecurePrefs(context);
-        if (prefs.getHost().isEmpty()) return;
+    private void processSystemAlerts(Context appContext) {
+        com.dmitrij.behappy.security.SecurePrefs userPreferences = new com.dmitrij.behappy.security.SecurePrefs(appContext);
+        if (userPreferences.getHost().isEmpty()) return;
 
         com.dmitrij.behappy.data.repository.TrueNasRepository.getInstance().fetchAlerts(
-            context, prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(),
+            appContext, userPreferences.getHost(), userPreferences.getApiKey(), userPreferences.isAllowSelfSigned(),
             new com.dmitrij.behappy.data.repository.TrueNasRepository.AlertsCallback() {
                 @Override
-                public void onSuccess(java.util.List<com.dmitrij.behappy.model.AlertInfo> alerts) {
-                    for (com.dmitrij.behappy.model.AlertInfo alert : alerts) {
-                        if ("CRITICAL".equals(alert.getLevel()) || "WARNING".equals(alert.getLevel())) {
-                            showNotification(context, alert.getLevel(), alert.getFormatted());
+                public void onSuccess(java.util.List<com.dmitrij.behappy.model.AlertInfo> alertsList) {
+                    for (com.dmitrij.behappy.model.AlertInfo alertInfo : alertsList) {
+                        if ("CRITICAL".equals(alertInfo.getLevel()) || "WARNING".equals(alertInfo.getLevel())) {
+                            triggerNotification(appContext, alertInfo.getLevel(), alertInfo.getFormatted());
                         }
                     }
                 }
                 @Override
-                public void onError(String message) {}
+                public void onError(String errorMessage) {}
             }
         );
     }
 
-    private void showNotification(Context context, String title, String text) {
+    private void triggerNotification(Context appContext, String alertTitle, String alertMessage) {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            if (ContextCompat.checkSelfPermission(appContext, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 return;
             }
         }
-        String channelId = "alerts";
-        android.app.NotificationManager nm = (android.app.NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        String alertChannelId = "alerts";
+        android.app.NotificationManager notificationManager = (android.app.NotificationManager) appContext.getSystemService(Context.NOTIFICATION_SERVICE);
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            nm.createNotificationChannel(new android.app.NotificationChannel(channelId, "System Alerts", android.app.NotificationManager.IMPORTANCE_HIGH));
+            notificationManager.createNotificationChannel(new android.app.NotificationChannel(alertChannelId, "System Alerts", android.app.NotificationManager.IMPORTANCE_HIGH));
         }
-        androidx.core.app.NotificationCompat.Builder b = new androidx.core.app.NotificationCompat.Builder(context, channelId)
+        androidx.core.app.NotificationCompat.Builder notificationBuilder = new androidx.core.app.NotificationCompat.Builder(appContext, alertChannelId)
                 .setSmallIcon(com.dmitrij.behappy.R.drawable.info)
-                .setContentTitle("TrueNAS: " + title)
-                .setContentText(text)
+                .setContentTitle("TrueNAS: " + alertTitle)
+                .setContentText(alertMessage)
                 .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH);
-        nm.notify(text.hashCode(), b.build());
+        notificationManager.notify(alertMessage.hashCode(), notificationBuilder.build());
     }
 
-    private void updateWidget(Context context, Class<?> cls) {
-        AppWidgetManager manager = AppWidgetManager.getInstance(context);
-        int[] ids = manager.getAppWidgetIds(new ComponentName(context, cls));
-        if (ids.length > 0) {
-            Intent intent = new Intent(context, cls);
-            intent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
-            intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids);
-            context.sendBroadcast(intent);
+    private void refreshWidgetComponent(Context appContext, Class<?> widgetClass) {
+        AppWidgetManager widgetManager = AppWidgetManager.getInstance(appContext);
+        int[] widgetIdentifiers = widgetManager.getAppWidgetIds(new ComponentName(appContext, widgetClass));
+        if (widgetIdentifiers.length > 0) {
+            Intent updateIntent = new Intent(appContext, widgetClass);
+            updateIntent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
+            updateIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, widgetIdentifiers);
+            appContext.sendBroadcast(updateIntent);
         }
     }
 }

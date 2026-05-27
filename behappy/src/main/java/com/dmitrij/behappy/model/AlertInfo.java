@@ -9,6 +9,9 @@ public class AlertInfo {
     @SerializedName("formatted")
     private String formatted;
 
+    public void setLevel(String level) { this.level = level; }
+    public void setFormatted(String formatted) { this.formatted = formatted; }
+
     public String getLevel() {
         return level == null ? "INFO" : level;
     }

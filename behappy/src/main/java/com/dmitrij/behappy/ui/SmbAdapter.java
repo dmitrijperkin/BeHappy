@@ -17,68 +17,68 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class SmbAdapter extends RecyclerView.Adapter<SmbAdapter.SmbViewHolder> {
-    private List<SmbShare> shares = new ArrayList<>();
-    private OnSmbToggleListener listener;
+public class SmbAdapter extends RecyclerView.Adapter<SmbAdapter.Holder> {
+    private List<SmbShare> items = new ArrayList<>();
+    private Listener listener;
 
-    public interface OnSmbToggleListener {
-        void onToggle(SmbShare share, boolean isEnabled);
+    public interface Listener {
+        void onToggle(SmbShare item, boolean en);
     }
 
-    public void setShares(List<SmbShare> newShares) {
-        final List<SmbShare> latest = newShares != null ? newShares : new ArrayList<>();
-        DiffUtil.DiffResult result = DiffUtil.calculateDiff(new DiffUtil.Callback() {
-            @Override public int getOldListSize() { return shares.size(); }
-            @Override public int getNewListSize() { return latest.size(); }
-            @Override public boolean areItemsTheSame(int oldP, int newP) {
-                return shares.get(oldP).getId() == latest.get(newP).getId();
+    public void setItems(List<SmbShare> list) {
+        final List<SmbShare> newList = list != null ? list : new ArrayList<>();
+        DiffUtil.DiffResult res = DiffUtil.calculateDiff(new DiffUtil.Callback() {
+            @Override public int getOldListSize() { return items.size(); }
+            @Override public int getNewListSize() { return newList.size(); }
+            @Override public boolean areItemsTheSame(int oldPos, int newPos) {
+                return items.get(oldPos).getId() == newList.get(newPos).getId();
             }
-            @Override public boolean areContentsTheSame(int oldP, int newP) {
-                return Objects.equals(shares.get(oldP), latest.get(newP));
+            @Override public boolean areContentsTheSame(int oldPos, int newPos) {
+                return Objects.equals(items.get(oldPos), newList.get(newPos));
             }
         });
-        this.shares = new ArrayList<>(latest);
-        result.dispatchUpdatesTo(this);
+        items = new ArrayList<>(newList);
+        res.dispatchUpdatesTo(this);
     }
 
-    public void setOnSmbToggleListener(OnSmbToggleListener listener) {
-        this.listener = listener;
+    public void setListener(Listener l) {
+        this.listener = l;
     }
 
     @NonNull
     @Override
-    public SmbViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+    public Holder onCreateViewHolder(@NonNull ViewGroup parent, int type) {
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_smb, parent, false);
-        return new SmbViewHolder(view);
+        return new Holder(view);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull SmbViewHolder holder, int position) {
-        SmbShare share = shares.get(position);
-        holder.name.setText(share.getName());
-        holder.path.setText(share.getPath());
+    public void onBindViewHolder(@NonNull Holder holder, int pos) {
+        SmbShare item = items.get(pos);
+        holder.name.setText(item.getName());
+        holder.path.setText(item.getPath());
         
-        holder.toggle.setOnCheckedChangeListener(null);
-        holder.toggle.setChecked(share.isEnabled());
-        holder.toggle.setOnCheckedChangeListener((v, isChecked) -> {
-            if (listener != null) listener.onToggle(share, isChecked);
+        holder.sw.setOnCheckedChangeListener(null);
+        holder.sw.setChecked(item.isEnabled());
+        holder.sw.setOnCheckedChangeListener((v, en) -> {
+            if (listener != null) listener.onToggle(item, en);
         });
     }
 
     @Override
     public int getItemCount() {
-        return shares.size();
+        return items.size();
     }
 
-    static class SmbViewHolder extends RecyclerView.ViewHolder {
+    static class Holder extends RecyclerView.ViewHolder {
         TextView name, path;
-        MaterialSwitch toggle;
+        MaterialSwitch sw;
 
-        public SmbViewHolder(@NonNull View itemView) {
-            super(itemView);
-            name = itemView.findViewById(R.id.smb_name);
-            path = itemView.findViewById(R.id.smb_path);
-            toggle = itemView.findViewById(R.id.smb_switch);
+        public Holder(@NonNull View view) {
+            super(view);
+            name = view.findViewById(R.id.smb_name);
+            path = view.findViewById(R.id.smb_path);
+            sw = view.findViewById(R.id.smb_switch);
         }
     }
 }

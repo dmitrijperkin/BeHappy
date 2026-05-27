@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.WindowManager;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -18,7 +19,7 @@ import com.dmitrij.behappy.security.SecurePrefs;
 import java.util.concurrent.Executor;
 
 @SuppressLint("CustomSplashScreen")
-public class SplashActivity extends AppCompatActivity {
+public class SplashActivity extends BaseActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,7 +32,7 @@ public class SplashActivity extends AppCompatActivity {
                 startActivity(new Intent(this, SetupActivity.class));
                 finish();
             } else if (prefs.isBiometricEnabled()) {
-                showBiometricPrompt();
+                auth();
             } else {
                 startActivity(new Intent(this, MainActivity.class));
                 finish();
@@ -39,22 +40,22 @@ public class SplashActivity extends AppCompatActivity {
         }, 1000);
     }
 
-    private void showBiometricPrompt() {
-        Executor executor = ContextCompat.getMainExecutor(this);
-        BiometricPrompt biometricPrompt = new BiometricPrompt(SplashActivity.this,
-                executor, new BiometricPrompt.AuthenticationCallback() {
+    private void auth() {
+        Executor exec = ContextCompat.getMainExecutor(this);
+        BiometricPrompt prompt = new BiometricPrompt(SplashActivity.this,
+                exec, new BiometricPrompt.AuthenticationCallback() {
             @Override
-            public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
-                super.onAuthenticationError(errorCode, errString);
-                Toast.makeText(getApplicationContext(), errString, Toast.LENGTH_SHORT).show();
-                if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON || errorCode == BiometricPrompt.ERROR_USER_CANCELED) {
+            public void onAuthenticationError(int code, @NonNull CharSequence err) {
+                super.onAuthenticationError(code, err);
+                Toast.makeText(getApplicationContext(), err, Toast.LENGTH_SHORT).show();
+                if (code == BiometricPrompt.ERROR_NEGATIVE_BUTTON || code == BiometricPrompt.ERROR_USER_CANCELED) {
                     finish();
                 }
             }
 
             @Override
-            public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
-                super.onAuthenticationSucceeded(result);
+            public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult res) {
+                super.onAuthenticationSucceeded(res);
                 startActivity(new Intent(SplashActivity.this, MainActivity.class));
                 finish();
             }
@@ -65,13 +66,13 @@ public class SplashActivity extends AppCompatActivity {
             }
         });
 
-        BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
+        BiometricPrompt.PromptInfo info = new BiometricPrompt.PromptInfo.Builder()
                 .setTitle(getString(R.string.auth_required))
                 .setSubtitle(getString(R.string.auth_reason))
                 .setAllowedAuthenticators(androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG | 
                                           androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL)
                 .build();
         
-        biometricPrompt.authenticate(promptInfo);
+        prompt.authenticate(info);
     }
 }

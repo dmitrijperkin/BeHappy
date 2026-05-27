@@ -12,7 +12,7 @@ public class CpuWidget extends BaseGraphWidget {
 
     @Override
     protected List<Float> getHistory() {
-        return StatsManager.getInstance().getCpuHistory();
+        return StatsManager.getInstance().getProcessorUsageList();
     }
 
     @Override

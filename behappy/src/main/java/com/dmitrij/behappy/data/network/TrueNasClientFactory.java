@@ -10,54 +10,60 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public final class TrueNasClientFactory {
-    private static final Map<String, TrueNasApi> clients = new HashMap<>();
+    private static final Map<String, TrueNasApi> apiClientCache = new HashMap<>();
 
     private TrueNasClientFactory() {
     }
 
-    public static synchronized TrueNasApi create(String host, String apiKey, boolean allowSelfSigned) {
-        if ("demo_mode".equals(host)) {
+    public static synchronized TrueNasApi create(String nasHost, String apiSecret, boolean ignoreSsl) {
+        if ("demo_mode".equals(nasHost)) {
             return DemoTrueNasApi.getInstance();
         }
 
-        String normalizedHost = normalizeHost(host);
-        String cacheKey = normalizedHost + "|" + apiKey + "|" + allowSelfSigned;
+        String sanitizedHostUrl = sanitizeHostUrl(nasHost);
+        String clientLookupKey = sanitizedHostUrl + "|" + apiSecret + "|" + ignoreSsl;
         
-        if (clients.containsKey(cacheKey)) {
-            return clients.get(cacheKey);
+        if (apiClientCache.containsKey(clientLookupKey)) {
+            return apiClientCache.get(clientLookupKey);
         }
 
-        OkHttpClient.Builder builder = new OkHttpClient.Builder()
-                .addInterceptor(chain -> {
-                    Request original = chain.request();
-                    Request request = original.newBuilder()
-                            .header("Authorization", "Bearer " + apiKey)
-                            .method(original.method(), original.body())
+        OkHttpClient.Builder httpClientBuilder = new OkHttpClient.Builder()
+                .addInterceptor(requestChain -> {
+                    Request originalRequest = requestChain.request();
+                    Request authenticatedRequest = originalRequest.newBuilder()
+                            .header("Authorization", "Bearer " + apiSecret)
+                            .method(originalRequest.method(), originalRequest.body())
                             .build();
-                    return chain.proceed(request);
+                    return requestChain.proceed(authenticatedRequest);
                 });
 
-        OkHttpClient client = allowSelfSigned
-                ? UnsafeOkHttpFactory.createUnsafeClient(builder)
-                : builder.build();
+        HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+        logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+        httpClientBuilder.addInterceptor(logging);
 
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(normalizedHost)
-                .client(client)
+        OkHttpClient okHttpClientInstance = ignoreSsl
+                ? UnsafeOkHttpFactory.createUnsafeClient(httpClientBuilder)
+                : httpClientBuilder.build();
+
+        Retrofit retrofitInstance = new Retrofit.Builder()
+                .baseUrl(sanitizedHostUrl)
+                .client(okHttpClientInstance)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
+        
+        android.util.Log.d("TrueNasAPI", "Creating client for: " + sanitizedHostUrl);
 
-        TrueNasApi api = retrofit.create(TrueNasApi.class);
-        clients.put(cacheKey, api);
-        return api;
+        TrueNasApi nasApiService = retrofitInstance.create(TrueNasApi.class);
+        apiClientCache.put(clientLookupKey, nasApiService);
+        return nasApiService;
     }
 
-    private static String normalizeHost(String host) {
-        if (host == null) return "https://localhost/";
-        String h = host.trim();
-        if (h.startsWith("http://") || h.startsWith("https://")) {
-            return h.endsWith("/") ? h : h + "/";
+    private static String sanitizeHostUrl(String rawHost) {
+        if (rawHost == null) return "https://localhost/";
+        String trimmedHost = rawHost.trim();
+        if (trimmedHost.startsWith("http://") || trimmedHost.startsWith("https://")) {
+            return trimmedHost.endsWith("/") ? trimmedHost : trimmedHost + "/";
         }
-        return "https://" + (h.endsWith("/") ? h : h + "/");
+        return "https://" + (trimmedHost.endsWith("/") ? trimmedHost : trimmedHost + "/");
     }
 }

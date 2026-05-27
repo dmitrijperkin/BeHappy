@@ -5,15 +5,31 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <com.google.android.material.tabs.TabLayout
-        android:id="@+id/tab_layout"
+    <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorSurface"
-        app:tabMode="fixed"
-        app:tabSelectedTextColor="?attr/colorPrimary"
-        app:tabIndicatorColor="?attr/colorPrimary"
-        app:tabRippleColor="@android:color/transparent"/>
+        android:layout_margin="8dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="4dp"
+        app:strokeWidth="0dp">
+
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/tab_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            app:tabMode="scrollable"
+            app:tabGravity="fill"
+            app:tabSelectedTextColor="@color/tg_blue"
+            app:tabTextColor="@color/text_secondary"
+            app:tabIndicatorColor="@color/tg_blue"
+            app:tabIndicatorHeight="3dp"
+            app:tabIndicatorFullWidth="false"
+            app:tabRippleColor="@color/glass_white"
+            app:tabTextAppearance="@android:style/TextAppearance.Widget.TabWidget"
+            app:tabInlineLabel="true"/>
+
+    </com.google.android.material.card.MaterialCardView>
 
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/view_pager"
