@@ -65,10 +65,6 @@ public class TrueNasRepository {
         void onSuccess(List<AuditEntry> list);
         void onError(String err);
     }
-    public interface StringCallback {
-        void onSuccess(String data);
-        void onError(String err);
-    }
     public interface ActionCallback {
         void onDone(int resId);
         void onError(String err);
@@ -200,27 +196,16 @@ public class TrueNasRepository {
     }
 
     public void fetchNetworkInterfaces(Context ctx, String host, String key, boolean ssl, NetworkCallback l) {
-        List<NetworkInterface> mock = new ArrayList<>();
-        
-        NetworkInterface eth0 = new NetworkInterface();
-        eth0.setName("enp0s31f6");
-        eth0.setType("PHYSICAL");
-        eth0.setLinkState("LINK_STATE_UP");
-        eth0.setAliases(List.of(new NetworkInterface.Alias("192.168.1.100", 24)));
-        mock.add(eth0);
-
-        NetworkInterface lo = new NetworkInterface();
-        lo.setName("lo");
-        lo.setType("LOOPBACK");
-        lo.setLinkState("LINK_STATE_UP");
-        lo.setAliases(List.of(new NetworkInterface.Alias("127.0.0.1", 8)));
-        mock.add(lo);
-
-        l.onSuccess(mock);
+        withApi(ctx, host, key, ssl, l::onError, api -> api.getNetworkInterfaces().enqueue(wrap(ctx, l::onSuccess, l::onError)));
     }
 
     public void toggleNetworkInterface(Context ctx, String host, String key, boolean ssl, String id, boolean en, ActionCallback l) {
-        l.onDone(en ? R.string.msg_interface_enabled : R.string.msg_interface_disabled);
+        withApi(ctx, host, key, ssl, l::onError, api -> {
+            Map<String, Object> body = new HashMap<>();
+            body.put("enabled", en);
+            // TrueNAS SCALE uses updateNetworkInterface for interfaces
+            api.updateNetworkInterface(id, body).enqueue(wrapAction(ctx, l, en ? R.string.msg_interface_enabled : R.string.msg_interface_disabled));
+        });
     }
 
     public void fetchAudit(Context ctx, String host, String key, boolean ssl, String service, AuditCallback l) {
@@ -246,18 +231,6 @@ public class TrueNasRepository {
             mock.add(entry);
         }
         l.onSuccess(mock);
-    }
-
-    public void fetchLogs(Context ctx, String host, String key, boolean ssl, StringCallback l) {
-        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault());
-        String t = sdf.format(new java.util.Date());
-        
-        StringBuilder sb = new StringBuilder();
-        sb.append("[").append(t).append("] INFO: Система запущена и работает в штатном режиме.\n\n");
-        sb.append("[").append(t).append("] WARNING: Обнаружена попытка входа с нового IP: 192.168.1.50\n\n");
-        sb.append("[").append(t).append("] INFO: Автоматическое резервное копирование успешно завершено.\n\n");
-        
-        l.onSuccess(sb.toString());
     }
 
     public void fetchVms(Context ctx, String host, String key, boolean ssl, VmsCallback l) {

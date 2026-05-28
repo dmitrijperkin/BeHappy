@@ -63,7 +63,22 @@ public class NetworkAdapter extends RecyclerView.Adapter<NetworkAdapter.Holder> 
         
         holder.sw.setOnCheckedChangeListener(null);
         holder.sw.setChecked(up);
+        
+        final android.content.Context context = holder.itemView.getContext();
+        
         holder.sw.setOnCheckedChangeListener((v, en) -> {
+            item.setLinkState(en ? "LINK_STATE_UP" : "LINK_STATE_DOWN");
+
+            String newState = en ? "LINK_STATE_UP" : "LINK_STATE_DOWN";
+            holder.status.setText(newState);
+            
+            int newColor = en ? 
+                    context.getColor(R.color.accent_green) : 
+                    context.getColor(R.color.accent_red);
+
+            holder.status.setTextColor(newColor);
+            holder.dot.setBackgroundTintList(android.content.res.ColorStateList.valueOf(newColor));
+
             if (listener != null && name != null) {
                 listener.onToggle(name, en);
             }

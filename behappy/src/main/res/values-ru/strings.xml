@@ -15,7 +15,6 @@
     <string name="nav_management">Управление</string>
     <string name="nav_settings">Настройки</string>
     <string name="nav_network">Сеть</string>
-    <string name="nav_logs">Логи</string>
     <string name="nav_audit">Аудит</string>
     <string name="label_audit_service">Служба</string>
     <string name="label_audit_user">Пользователь</string>

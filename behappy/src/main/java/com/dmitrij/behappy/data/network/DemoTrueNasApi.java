@@ -22,6 +22,7 @@ public class DemoTrueNasApi implements TrueNasApi {
     private List<VmInfo> vms;
     private List<IxAppInfo> apps;
     private List<SmbShare> shares;
+    private List<NetworkInterface> interfaces;
 
     private DemoTrueNasApi() {
         populateData();
@@ -61,6 +62,11 @@ public class DemoTrueNasApi implements TrueNasApi {
                 "{\"id\":2,\"path\":\"/mnt/tank/backups\",\"name\":\"Backups\",\"enabled\":true,\"comment\":\"Time Machine backups\"}," +
                 "{\"id\":3,\"path\":\"/mnt/tank/private\",\"name\":\"Private\",\"enabled\":false,\"comment\":\"Restricted access\"}" +
                 "]", new TypeToken<List<SmbShare>>() {}.getType());
+
+        interfaces = gson.fromJson("[" +
+                "{\"name\":\"enp0s31f6\",\"type\":\"PHYSICAL\",\"link_state\":\"LINK_STATE_UP\",\"aliases\":[{\"address\":\"192.168.1.100\",\"netmask\":24}]}," +
+                "{\"name\":\"lo\",\"type\":\"LOOPBACK\",\"link_state\":\"LINK_STATE_UP\",\"aliases\":[{\"address\":\"127.0.0.1\",\"netmask\":8}]}" +
+                "]", new TypeToken<List<NetworkInterface>>() {}.getType());
     }
 
     private void initStats() {
@@ -141,14 +147,11 @@ public class DemoTrueNasApi implements TrueNasApi {
 
     @Override
     public Call<List<NetworkInterface>> getNetworkInterfaces() {
-        return queryNetworkInterfaces(new ArrayList<>());
+        return new DemoCall<>(new ArrayList<>(interfaces));
     }
 
     public Call<List<NetworkInterface>> queryNetworkInterfaces(List<Object> body) {
-        return new DemoCall<>(gson.fromJson("[" +
-                "{\"name\":\"enp0s31f6\",\"type\":\"LINK_AGGREGATION\",\"link_state\":\"LINK_STATE_UP\",\"aliases\":[{\"address\":\"192.168.1.100\",\"netmask\":24}]}," +
-                "{\"name\":\"lo\",\"type\":\"LOOPBACK\",\"link_state\":\"LINK_STATE_UP\",\"aliases\":[{\"address\":\"127.0.0.1\",\"netmask\":8}]}" +
-                "]", new TypeToken<List<NetworkInterface>>() {}.getType()));
+        return new DemoCall<>(new ArrayList<>(interfaces));
     }
 
     @Override
@@ -247,11 +250,26 @@ public class DemoTrueNasApi implements TrueNasApi {
 
     @Override
     public Call<ResponseBody> updateNetworkInterface(String id, Map<String, Object> body) {
-        return new DemoCall<>(null);
+        return updateInterface(id, body);
     }
 
     @Override
     public Call<ResponseBody> updateInterface(String id, Map<String, Object> body) {
+        for (NetworkInterface ni : interfaces) {
+            if (ni.getName().equals(id)) {
+                if (body.containsKey("enabled")) {
+                    boolean en = (boolean) body.get("enabled");
+                    ni.setLinkState(en ? "LINK_STATE_UP" : "LINK_STATE_DOWN");
+                } else {
+                    if (ni.getLinkState().contains("UP")) {
+                        ni.setLinkState("LINK_STATE_DOWN");
+                    } else {
+                        ni.setLinkState("LINK_STATE_UP");
+                    }
+                }
+                break;
+            }
+        }
         return new DemoCall<>(null);
     }
 
@@ -333,13 +351,6 @@ public class DemoTrueNasApi implements TrueNasApi {
             return new DemoCall<>(all);
         } else if ("chart.release.upgrade".equals(method)) {
             return new DemoCall<>(null);
-        } else if ("system.get_error_log".equals(method)) {
-            return new DemoCall<>("[2023-11-20 10:15:33] INFO: System startup complete\n" +
-                    "[2023-11-20 12:45:01] WARNING: High memory usage detected in Plex\n" +
-                    "[2023-11-21 03:00:10] INFO: Scheduled snapshot created for tank/media\n" +
-                    "[2023-11-22 09:22:45] INFO: SMB service restarted successfully\n" +
-                    "[2023-11-23 15:10:12] ERROR: Failed to connect to update server (timeout)\n" +
-                    "[2023-11-24 11:00:00] INFO: Periodic scrub started on boot-pool");
         }
         return new DemoCall<>(null);
     }

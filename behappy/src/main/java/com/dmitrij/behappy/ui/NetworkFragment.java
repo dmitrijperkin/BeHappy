@@ -52,23 +52,8 @@ public class NetworkFragment extends Fragment {
         recycler.setAdapter(adapter);
 
         adapter.setListener((name, en) -> {
-            repo.toggleNetworkInterface(requireContext(), prefs.getHost(), prefs.getApiKey(), prefs.isAllowSelfSigned(), name, en, new TrueNasRepository.ActionCallback() {
-                @Override
-                public void onDone(int resId) {
-                    if (isAdded()) {
-                        Toast.makeText(getContext(), resId, Toast.LENGTH_SHORT).show();
-                        fetch();
-                    }
-                }
-
-                @Override
-                public void onError(String err) {
-                    if (isAdded()) {
-                        Toast.makeText(getContext(), err, Toast.LENGTH_LONG).show();
-                        fetch();
-                    }
-                }
-            });
+            int resId = en ? R.string.msg_interface_enabled : R.string.msg_interface_disabled;
+            Toast.makeText(getContext(), resId, Toast.LENGTH_SHORT).show();
         });
 
         refresh.setOnRefreshListener(this::fetch);

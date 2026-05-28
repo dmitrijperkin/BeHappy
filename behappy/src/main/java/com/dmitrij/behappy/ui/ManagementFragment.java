@@ -38,7 +38,7 @@ public class ManagementFragment extends Fragment {
                     case 2: return new AppsFragment();
                     case 3: return new NetworkFragment();
                     case 4: return new AuditFragment();
-                    default: return new LogsFragment();
+                    default: return new ServicesFragment();
                 }
             }
 
@@ -56,7 +56,7 @@ public class ManagementFragment extends Fragment {
                     break;
                 case 1: 
                     tab.setText(R.string.nav_virtualization);
-                    tab.setIcon(R.drawable.info);
+                    tab.setIcon(R.drawable.virtual_machine);
                     break;
                 case 2: 
                     tab.setText(R.string.nav_apps);
@@ -64,7 +64,7 @@ public class ManagementFragment extends Fragment {
                     break;
                 case 3: 
                     tab.setText(R.string.nav_network);
-                    tab.setIcon(R.drawable.report);
+                    tab.setIcon(R.drawable.wi_fi);
                     break;
                 case 4: 
                     tab.setText(R.string.nav_audit);
